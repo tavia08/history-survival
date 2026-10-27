@@ -21,14 +21,18 @@
 .hit.stage-active{border:3px solid #ffd17a;box-shadow:inset 0 0 8px #f3af5055,0 0 12px #efaf4e88}
 
 @media(prefers-reduced-motion:reduce){.stage-panel{transition:none}}
+
+/* Ranking UI is contained inside the existing records dialog. */
+.rank-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.rank-tab{padding:9px 17px;border:1px solid #a68758;border-radius:9px;color:#eed9b4;background:#29251e;font-weight:800}.rank-tab[aria-selected="true"]{background:#d6af71;color:#292016}.rank-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.rank-controls label{display:grid;gap:5px;color:#efd5ad;font-size:13px}.rank-controls select,.rank-controls input{min-width:0;width:100%;background:#171a1a;color:#fff3d3;border:1px solid #8a7455;border-radius:8px;padding:11px}.rank-list{width:100%;border-collapse:collapse;font-size:13px}.rank-list th,.rank-list td{border-bottom:1px solid #5b513e;padding:10px 5px;text-align:center}.rank-list th{color:#f0cc91}.rank-scroll{max-height:37dvh;overflow:auto}.rank-msg{font-size:13px;color:#f6d49e;line-height:1.6;min-height:20px}.rank-submit{background:#b4874f;border:1px solid #f5d39e;border-radius:9px;padding:11px 16px;font-weight:800;color:#211b13;cursor:pointer}.rank-submit:disabled{opacity:.5;cursor:default}@media(max-width:480px){.rank-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-list{font-size:11px}}
 </style></head><body><main class="shell"><section class="stage" aria-label="생존자의 베이스캠프 전장 선택 화면">
 <img id="panel-gahan" class="stage-panel" src="assets/panel_gahan.png" alt="" aria-hidden="true"><img id="panel-hwang" class="stage-panel" src="assets/panel_hwang.png" alt="" aria-hidden="true"><img id="panel-cheong" class="stage-panel" src="assets/panel_cheong.png" alt="" aria-hidden="true"><button class="hit h-gahan" data-stage="gahan" aria-label="가한목 전투 선택"></button><button class="hit h-hwang" data-stage="hwang" aria-label="황산벌 전투 선택"></button><button class="hit h-cheong" data-stage="cheong" aria-label="청해진의 밤 선택"></button>
 <button class="hit h-history" id="history" aria-label="역사 이야기 열기"></button><button class="hit h-record" id="records" aria-label="생존 기록 보기"></button><button class="hit h-start" id="start" aria-label="선택한 전장 전투개시"></button><button class="hit h-settings" id="settings" aria-label="설정 열기"></button>
 <div class="toast" id="toast" hidden></div>
 </section></main><div class="overlay" id="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><article class="dialog"><div class="dialog-top"><span class="kicker" id="dialogKicker"></span><button class="close" id="close" type="button">닫기 ×</button></div><h2 id="dialogTitle"></h2><p id="dialogText"></p><p class="small" id="dialogNote"></p><div class="actions" id="dialogActions"></div></article></div>
+<script src="ranking-config.js"></script>
 <script>
 'use strict';
-const HUB_VERSION='v2.6';
+const HUB_VERSION='v2.8';
 const stages={
  gahan:{name:'가한목 전투',era:'1108년 · 고려',desc:'여진 정벌에 나선 고려군의 위기. 척준경이 되어 윤관을 찾고 안전하게 호위하세요.',goals:['본진을 방어하며 생존하기','윤관을 수색하여 찾아내기','윤관을 안전하게 호위하기'],live:true},
  hwang:{name:'황산벌 전투',era:'660년 · 백제',desc:'백제의 마지막 저항이 이어진 황산벌에서 계백의 이야기와 치열한 전투를 만납니다.',goals:['황산벌 전장에서 생존하기','위협을 피하며 전투 이어가기'],live:true},
@@ -73,48 +77,82 @@ function renderDialog(){actions.replaceChildren();$('dialogNote').textContent=''
   },true);return;
  }
  if(mode==='records'){
-  $('dialogKicker').textContent='생존 기록';
-  $('dialogTitle').textContent='나의 전장 기록';
-  const lines=[];
-  const configs=[
-    ['황산벌 전투','HistorySurvivor_Hwangsanbeol_v229','HistorySurvivor_Hwangsanbeol_score_v229','HistorySurvivor_Hwangsanbeol_analytics_v229'],
-    ['청해진의 밤','HistorySurvivor_Cheonghaejin_v229','HistorySurvivor_Cheonghaejin_score_v229','HistorySurvivor_Cheonghaejin_analytics_v229']
-  ];
-  let storageOK=true;
-  const readJSON=(key,fallback)=>{const raw=localStorage.getItem(key);if(!raw)return fallback;try{return JSON.parse(raw)}catch{return fallback}};
-  const natural=x=>Number.isFinite(Number(x))?Math.max(0,Math.floor(Number(x))):0;
-  const formatTime=n=>String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
-  for(const [name,key,scoreKey,analyticsKey] of configs){
-    try{
-      const saved=readJSON(key,{}),scoreData=readJSON(scoreKey,{}),runs=readJSON(analyticsKey,[]);
-      const history=Array.isArray(runs)?runs.filter(x=>x&&typeof x==='object'):[];
-      const completed=history.length;
-      const recordedWins=history.filter(x=>x.result==='승리').length;
-      const attempts=Math.max(natural(saved.attempts),completed);
-      const wins=Math.max(natural(saved.wins),recordedWins);
-      const bestSeconds=Math.max(natural(saved.best),...history.map(x=>natural(x.survivalSec)),0);
-      const bestScore=Math.max(natural(scoreData.best),...history.map(x=>natural(x.score)),0);
-      const kills=Math.max(natural(saved.kills),...history.map(x=>natural(x.normalKills)+natural(x.eliteKills)+natural(x.bossKills)),0);
-      if(!attempts&&!completed){lines.push(name+'\n  아직 저장된 기록이 없습니다.');continue;}
-      lines.push(name+'\n  도전 '+attempts+'회 · 승리 '+wins+'회 · 최고 생존 '+formatTime(bestSeconds)+' · 최고 점수 '+bestScore.toLocaleString('ko-KR')+'점 · 최다 처치 '+kills+'명');
-    }catch(e){storageOK=false;lines.push(name+'\n  이 환경에서는 기록을 읽을 수 없습니다.');}
-  }
-  try {
-    const raw=localStorage.getItem('HistorySurvivor_Gahanmok_v1_records');
-    if(!raw){lines.push('가한목 전투\n  아직 저장된 기록이 없습니다.');}
-    else {
-      const r=JSON.parse(raw); const safe=n=>Number.isFinite(Number(n))?Math.max(0,Math.floor(Number(n))):0;
-      const sec=safe(r.bestSeconds);
-      const bestTime=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
-      lines.push('가한목 전투\n  종료된 도전 '+safe(r.attempts)+'회 · 승리 '+safe(r.wins)+'회 · 최고 생존 '+bestTime+' · 최고 점수 '+safe(r.bestScore).toLocaleString()+'점 · 최다 처치 '+safe(r.mostKills)+'명');
-    }
-  } catch(e){lines.push('가한목 전투\n  기록을 읽을 수 없습니다.');}
-  $('dialogText').textContent=lines.join('\n\n');
-  $('dialogNote').textContent=storageOK?'최고 기록과 최근 전투 기록을 함께 확인합니다. 브라우저별 로컬 기록이므로 다른 기기와 자동 합산되지 않습니다.':'브라우저 보안 설정에 따라 기록 조회가 제한될 수 있습니다.';
-  button('확인',closeDialog,true);return;
-}
+   $('dialogKicker').textContent='생존 기록 · 명예의 전당';
+   $('dialogTitle').textContent='생존자의 기록';
+   $('dialogText').replaceChildren();$('dialogNote').textContent='전투별 개인 기록과 학급 랭킹입니다. 본명 대신 4글자 이하 이니셜을 사용하세요.';
+   showRecordTabs();return;
+ }
  if(mode==='settings'){$('dialogKicker').textContent='베이스캠프';$('dialogTitle').textContent='설정';$('dialogText').textContent='화면 비율에 따라 캠프 전체가 보이도록 구성했습니다. 좁은 화면에서는 가로로 이동해 메뉴를 선택할 수 있습니다.';button('확인',closeDialog,true);return;}
  if(mode==='wait'){$('dialogKicker').textContent='전장 연결 대기';$('dialogTitle').textContent=s.name;$('dialogText').textContent='이 전장의 게임 파일은 아직 허브에 연결되지 않았습니다. 연결 전에는 게임을 시작할 수 없습니다.';button('확인',closeDialog,true);return;}
+}
+
+const RANK_ENDPOINT=(window.SURVIVOR_RANK_URL||'').trim();
+const RK_STAGES=[['hwang','황산벌 전투'],['cheong','청해진의 밤'],['gahan','가한목 전투']];
+let rankTab='mine',rankScope='all',rankSelected='hwang';
+function rankNum(x){return Number.isFinite(Number(x))?Math.max(0,Math.floor(Number(x))):0}
+function rankRead(k,f={}){try{return JSON.parse(localStorage.getItem(k)||'null')||f}catch{return f}}
+function rankMine(stage){
+ if(stage==='gahan'){
+   const x=rankRead('HistorySurvivor_Gahanmok_v1_records');
+   return {attempts:rankNum(x.attempts),wins:rankNum(x.wins),score:rankNum(x.bestScore),seconds:rankNum(x.bestSeconds),kills:rankNum(x.mostKills)};
+ }
+ const key=stage==='hwang'?'Hwangsanbeol':'Cheonghaejin';
+ const saved=rankRead('HistorySurvivor_'+key+'_v229');
+ const best=rankRead('HistorySurvivor_'+key+'_score_v229');
+ const hist=rankRead('HistorySurvivor_'+key+'_analytics_v229',[]);
+ const runs=Array.isArray(hist)?hist.filter(x=>x&&typeof x==='object'):[];
+ return {attempts:Math.max(rankNum(saved.attempts),runs.length),wins:Math.max(rankNum(saved.wins),runs.filter(x=>x.result==='승리').length),score:Math.max(rankNum(best.best),...runs.map(x=>rankNum(x.score)),0),seconds:Math.max(rankNum(saved.best),...runs.map(x=>rankNum(x.survivalSec)),0),kills:Math.max(rankNum(saved.kills),...runs.map(x=>rankNum(x.normalKills)+rankNum(x.eliteKills)+rankNum(x.bossKills)),0)};
+}
+function rankTime(n){return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
+function node(tag,txt='',cls=''){const x=document.createElement(tag);x.textContent=txt;if(cls)x.className=cls;return x}
+function jsonp(params){return new Promise((resolve,reject)=>{
+ if(!/^https:\/\/script\.google\.com\/macros\/s\//.test(RANK_ENDPOINT)){reject(new Error('구글시트 연결 설정이 필요합니다.'));return}
+ const cb='historySurvivorCB'+Math.random().toString(36).slice(2);const sc=document.createElement('script');let finished=false;
+ const timer=setTimeout(()=>finish(new Error('서버 응답 시간 초과')),12000);
+ function finish(err,data){if(finished)return;finished=true;clearTimeout(timer);delete window[cb];sc.remove();err?reject(err):resolve(data)}
+ window[cb]=data=>finish(null,data);sc.onerror=()=>finish(new Error('네트워크 요청에 실패했습니다.'));
+ const q=new URLSearchParams({...params,callback:cb});sc.src=RANK_ENDPOINT+'?'+q.toString();document.head.appendChild(sc);
+ })}
+function showRecordTabs(){
+ const box=$('dialogText');box.replaceChildren();box.style.whiteSpace='normal';
+ const tabs=node('div','','rank-tabs');['mine','board'].forEach((k,i)=>{const b=node('button',i?'🏆 명예의 전당':'📜 내 기록','rank-tab');b.type='button';b.setAttribute('aria-selected',String(rankTab===k));b.onclick=()=>{rankTab=k;showRecordTabs()};tabs.appendChild(b)});box.appendChild(tabs);
+ const controls=node('div','','rank-controls');
+ function selector(label,items,val,onChange){const wrapper=node('label',label);const sel=document.createElement('select');for(const [k,t] of items){const opt=new Option(t,k);sel.add(opt)}sel.value=val;sel.onchange=()=>onChange(sel.value);wrapper.appendChild(sel);controls.appendChild(wrapper);return sel}
+ selector('전장 선택',RK_STAGES,rankSelected,v=>{rankSelected=v;showRecordTabs()});
+ if(rankTab==='board')selector('랭킹 범위',[['all','전체'],...Array.from({length:15},(_,i)=>[String(i+1),`${i+1}반`])],rankScope,v=>{rankScope=v;showRecordTabs()});
+ box.appendChild(controls);
+ const r=rankMine(rankSelected);
+ if(rankTab==='mine'){
+  const info=node('div',`도전 ${r.attempts}회 · 승리 ${r.wins}회\n최고 점수 ${r.score.toLocaleString()}점 · 최고 생존 ${rankTime(r.seconds)}\n최다 처치 ${r.kills}명`,'rank-msg');info.style.whiteSpace='pre-line';box.appendChild(info);
+  const fields=node('div','','rank-controls');
+  function field(label,el){const l=node('label',label);l.appendChild(el);fields.appendChild(l);return el}
+  const cl=document.createElement('select');for(let i=1;i<=15;i++)cl.add(new Option(i+'반',String(i)));cl.value=localStorage.getItem('survivorRankClass')||'1';field('학급',cl);
+  const nick=document.createElement('input');nick.type='text';nick.maxLength=4;nick.placeholder='이니셜 4글자';nick.value=localStorage.getItem('survivorRankInitials')||'';field('이니셜',nick);
+  box.appendChild(fields);
+  const send=node('button','내 최고 기록 등록','rank-submit');box.appendChild(send);
+  const msg=node('div','','rank-msg');box.appendChild(msg);
+  if(!RANK_ENDPOINT){msg.textContent='현재 랭킹 서버 미연결: 안내문에 따라 Apps Script 배포 주소를 설정하면 등록할 수 있습니다.';send.disabled=true}
+  send.onclick=async()=>{
+    const name=nick.value.trim();if(!/^[가-힣A-Za-z0-9]{1,4}$/.test(name)){msg.textContent='이니셜은 한글·영문·숫자 1~4자로 입력하세요.';return}
+    if(r.attempts<1||r.score<1){msg.textContent='점수가 있는 게임 기록이 생성된 후 등록할 수 있습니다.';return}
+    send.disabled=true;msg.textContent='랭킹 등록 중…';try{
+      const ans=await jsonp({action:'submit',stage:rankSelected,cls:cl.value,name,score:String(r.score),seconds:String(r.seconds),kills:String(r.kills),wins:String(r.wins),attempts:String(r.attempts)});
+      if(!ans.ok)throw new Error(ans.error||'등록 실패');
+      localStorage.setItem('survivorRankClass',cl.value);localStorage.setItem('survivorRankInitials',name);msg.textContent='등록되었습니다. 명예의 전당에서 확인하세요.';
+    }catch(e){msg.textContent='등록 실패: '+e.message}finally{send.disabled=false}
+  };
+ }else{
+  const msg=node('div','조회 중…','rank-msg');box.appendChild(msg);
+  const wrap=node('div','','rank-scroll');box.appendChild(wrap);
+  if(!RANK_ENDPOINT){msg.textContent='랭킹 서버 미연결: Apps Script 배포 주소 설정 후 순위가 표시됩니다.';return}
+  const requestKey=rankSelected+'|'+rankScope;
+  jsonp({action:'list',stage:rankSelected,cls:rankScope}).then(data=>{
+    if(mode!=='records'||rankTab!=='board'||rankSelected+'|'+rankScope!==requestKey)return;
+    if(!data.ok)throw new Error(data.error||'조회 실패');msg.textContent=(data.rows||[]).length?'상위 10명':'아직 등록된 기록이 없습니다.';
+    const table=node('table','','rank-list'),head=node('tr');['순위','이니셜','반','점수','생존'].forEach(x=>head.appendChild(node('th',x)));const th=node('thead');th.appendChild(head);table.appendChild(th);const body=node('tbody');
+    (data.rows||[]).forEach((row,i)=>{const tr=node('tr');[i+1,row.name,row.cls+'반',Number(row.score).toLocaleString(),rankTime(rankNum(row.seconds))].forEach(v=>tr.appendChild(node('td',String(v))));body.appendChild(tr)});table.appendChild(body);wrap.replaceChildren(table);
+  }).catch(e=>{msg.textContent='조회 실패: '+e.message});
+ }
 }
 function selectStage(id){
  if(!stages[id])return;
