@@ -1,0 +1,52 @@
+{
+  "release": "v2.6 ClassroomStable",
+  "source": "v2.5_BrowserQA",
+  "checks": {
+    "inline_js_syntax": [
+      {
+        "file": "index.html",
+        "script": 0,
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "file": "cheonghaejin.html",
+        "script": 0,
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "file": "gahanmok.html",
+        "script": 0,
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "file": "gahanmok.html",
+        "script": 1,
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "file": "gahanmok.html",
+        "script": 2,
+        "passed": true,
+        "detail": ""
+      },
+      {
+        "file": "hwangsanbeol.html",
+        "script": 0,
+        "passed": true,
+        "detail": ""
+      }
+    ],
+    "game_html": 3,
+    "basecamp_return_links": 3,
+    "required_images": 4,
+    "archive_integrity": true
+  },
+  "scope": "Static packaging, code syntax and local links checked; full-game and device play NOT performed for this release.",
+  "sha256": {
+    "index.html": "4b0bf69ed01dea5d9abd556ec7576625a454da5d3e8522605ee6b3c612f99025"
+  }
+}
