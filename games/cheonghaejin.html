@@ -973,10 +973,38 @@ function drawBaekjeGrowth(x,y,flash,orientation,moving,attacking,animProgress){
  if(tier>=2){ctx.fillStyle='#f0deb0';ctx.fillRect(-width*.31,-height*.49,9,4);ctx.fillRect(width*.12,-height*.49,9,4);ctx.fillStyle='#fff2bd';ctx.fillRect(-2,-height*.76,4,8);ctx.strokeStyle=CHEONG_ALLY_RING;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-7,-height*.18);ctx.lineTo(7,-height*.18);ctx.stroke()}
  if(tier>=3){ctx.fillStyle='#f2cf75';ctx.fillRect(-5,-height*.81,10,3);ctx.fillStyle='#ecb75c';ctx.fillRect(-2,-height*.9,4,9);ctx.fillStyle='#e8d399';ctx.fillRect(-6,-height*.10,12,3);if(attacking&&animProgress>.3&&animProgress<.68){ctx.strokeStyle='#ffe3a0';ctx.globalAlpha=.55;ctx.lineWidth=4;ctx.beginPath();ctx.arc(9,-height*.43,24,-.9,.9);ctx.stroke();ctx.globalAlpha=1}}
  if(flash){ctx.globalAlpha=.3;ctx.fillStyle='#fffae2';ctx.fillRect(-width*.35,-height*.7,width*.7,height*.65)}
- ctx.restore();cheongRoleAccents(x+(orientation<0?-shift:shift),y,'guard',orientation,attacking,animProgress);return true;
+ ctx.restore();cheongRoleAccents(x+(orientation<0?-shift:shift),y,'guard',orientation,attacking,animProgress);
+ // v2.7: 호위대 주인공의 공격 동작. 타격 판정은 기존 코드 그대로 사용한다.
+ // 실제 공격이 발생한 0.34초 동안만 팔+검의 위치가 준비→휘두르기→회수로 변화한다.
+ if(attacking)drawCheongGuardSwordMotion(x+(orientation<0?-shift:shift),y,orientation,animProgress);
+ return true;
 }
 
 
+
+function drawCheongGuardSwordMotion(x,y,orientation,progress){
+ const p=Math.max(0,Math.min(1,Number.isFinite(progress)?progress:0));
+ // 측면에서 보이는 상체 기울기, 오른팔 위치, 장검의 회전 각도를 단계적으로 보간한다.
+ const ease=t=>t*t*(3-2*t);
+ const swing=p<.22?ease(p/.22)*.34:p<.68?.34+ease((p-.22)/.46)*1.72:2.06-ease((p-.68)/.32)*1.34;
+ const angle=-1.25+swing;
+ const lunge=Math.sin(Math.PI*p)*5;
+ ctx.save();ctx.translate(x,y);if(orientation<0)ctx.scale(-1,1);
+ ctx.translate(lunge,-37-Math.sin(Math.PI*p)*2);
+ ctx.rotate(angle);
+ // 견갑 아래에서 팔이 따라 움직이는 표현. 기본 프레임 위에 자연스럽게 겹친다.
+ ctx.lineCap='round';ctx.lineJoin='round';
+ ctx.strokeStyle='#0b3741';ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(3,2);ctx.lineTo(19,-4);ctx.stroke();
+ ctx.strokeStyle='#347481';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(5,1);ctx.lineTo(20,-4);ctx.stroke();
+ ctx.fillStyle='#dbad81';ctx.beginPath();ctx.arc(22,-4,4.3,0,Math.PI*2);ctx.fill();
+ // 금속 검: 날 + 날 끝 + 손잡이. 효과만 나타나는 문제가 없도록 무기를 직접 움직인다.
+ ctx.strokeStyle='#4b3022';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(15,-5);ctx.lineTo(29,-5);ctx.stroke();
+ ctx.strokeStyle='#d8a95c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(27,-12);ctx.lineTo(27,2);ctx.stroke();
+ ctx.fillStyle='#e4e7e7';ctx.strokeStyle='#fff2d1';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(29,-9);ctx.lineTo(61,-7);ctx.lineTo(75,-5);ctx.lineTo(61,-3);ctx.lineTo(29,-1);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.strokeStyle='#91b4c0';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(33,-5);ctx.lineTo(67,-5);ctx.stroke();
+ ctx.restore();
+}
 
 function drawBaekjeArcherIllustration(x,y,flash,orientation,moving,attacking,animProgress){
  const tick=Math.floor(time*7+(x+y)*.01)%2;
