@@ -1336,11 +1336,48 @@ function cheongDrawSprite(x,y,id,flash,orientation,moving,attacking,scale=1){
  return true;
 }
 
+// v2.9: Character-visible sword animation. This is an animated arm and a solid blade,
+// not a particle arc; the battle hit box and strike cadence are unchanged.
+function cheongDrawGuardSword(x,y,orientation,progress,scale){
+ const p=Math.max(0,Math.min(1,Number.isFinite(progress)?progress:0));
+ // wind-up (0-.22), decisive forward slash (.22-.72), recover (.72-1).
+ let angle;
+ if(p<.22){const t=p/.22;angle=-2.02-.36*t;}
+ else if(p<.72){const t=(p-.22)/.50;angle=-2.38+3.32*(t*t*(3-2*t));}
+ else {const t=(p-.72)/.28;angle=.94-1.18*(t*t*(3-2*t));}
+ const q=scale*1.12;
+ ctx.save();
+ ctx.translate(x,y);
+ if(orientation<0)ctx.scale(-1,1);
+ // Body lunge at contact, feet stay in place.
+ const lunge=p>.25&&p<.80?3.8*Math.sin(Math.PI*(p-.25)/.55):0;
+ ctx.translate(lunge*q,0);
+ // Arm pivots from the shoulder at a position matching the full-body bitmap.
+ ctx.translate(9*q,-34*q);
+ ctx.rotate(angle);
+ ctx.lineCap='round';ctx.lineJoin='round';
+ // Dark outline + padded teal sleeve: the whole arm follows the blade.
+ ctx.strokeStyle='#101d21';ctx.lineWidth=12*q;ctx.beginPath();ctx.moveTo(-2*q,0);ctx.lineTo(19*q,0);ctx.stroke();
+ ctx.strokeStyle='#315b66';ctx.lineWidth=8*q;ctx.beginPath();ctx.moveTo(-1*q,-1*q);ctx.lineTo(19*q,-1*q);ctx.stroke();
+ ctx.strokeStyle='#b48b53';ctx.lineWidth=3.4*q;ctx.beginPath();ctx.moveTo(5*q,-4*q);ctx.lineTo(12*q,-4*q);ctx.stroke();
+ ctx.fillStyle='#c29c78';ctx.beginPath();ctx.arc(21*q,0,4.2*q,0,Math.PI*2);ctx.fill();
+ // Crossguard, grip, and opaque sword blade (not a wind effect).
+ ctx.strokeStyle='#2e241f';ctx.lineWidth=4*q;ctx.beginPath();ctx.moveTo(14*q,0);ctx.lineTo(29*q,0);ctx.stroke();
+ ctx.strokeStyle='#e7b76a';ctx.lineWidth=3.5*q;ctx.beginPath();ctx.moveTo(29*q,-8*q);ctx.lineTo(29*q,8*q);ctx.stroke();
+ ctx.fillStyle='#e7e9e8';ctx.strokeStyle='#fff0d1';ctx.lineWidth=1.4*q;
+ ctx.beginPath();ctx.moveTo(30*q,-5*q);ctx.lineTo(64*q,-3.4*q);ctx.lineTo(74*q,0);ctx.lineTo(64*q,3.4*q);ctx.lineTo(30*q,5*q);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.strokeStyle='#8eaeb9';ctx.lineWidth=1.3*q;ctx.beginPath();ctx.moveTo(36*q,0);ctx.lineTo(66*q,0);ctx.stroke();
+ ctx.restore();
+}
+
 soldier = function(x,y,isEnemy,type,flash,orientation=1,moving=true,attacking=false,animProgress=0){
  const cheongId = isEnemy
    ? (type==='boss' ? 'boss' : type==='archer' ? 'archer' : type==='elite' ? 'assassin' : type==='spear' ? 'spear' : 'foot')
    : (type==='archer' ? 'allyarcher' : 'guard');
- if(cheongDrawSprite(x,y,cheongId,flash,orientation,moving,attacking,type==='boss'?0.96:type==='elite'?0.98:0.94)) return;
+ if(cheongDrawSprite(x,y,cheongId,flash,orientation,moving,attacking,type==='boss'?0.96:type==='elite'?0.98:0.94)){
+    if(!isEnemy && type==='player' && attacking) cheongDrawGuardSword(x,y,orientation,animProgress,0.94);
+    return;
+  }
 }
 
 function drawSupportArcherUnit(a){
