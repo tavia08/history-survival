@@ -593,6 +593,7 @@ function saveGahanmokResultOnce(){
      lastResult:phase,lastSeconds:duration,lastScore:points,lastKills:defeated
    };
    localStorage.setItem(GH_RECORD_KEY,JSON.stringify(result));
+   try{window.HSSyncV13?.save('gahanmok',{score:points,win:phase==='victory',seconds:duration,kills:defeated});}catch(e){console.warn('[HS] 개인 기록',e)}
    ghRecorded=true;
  } catch(err) { console.warn('가한목 기록 저장이 제한되었습니다.',err); }
 }
@@ -891,4 +892,4 @@ document.getElementById('fullBtn').addEventListener('click',()=>{if(document.ful
 <script>/* Student build: restrict internal QA entry points. */
 for(const n of ['__qa','__v044QA','__v054QA','__yoonNavTest','__inputQA']){try{delete window[n]}catch(_){window[n]=undefined}}
 </script>
-<a id="survivorHubReturn" href="../index.html" aria-label="생존자의 베이스캠프로 돌아가기" style="position:fixed;left:10px;top:10px;z-index:999999;background:rgba(16,24,25,.90);border:1px solid #bda06c;color:#fff3db;text-decoration:none;border-radius:10px;padding:7px 11px;font:700 12px system-ui,'Malgun Gothic',sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);">← 베이스캠프</a></body></html>
+<a id="survivorHubReturn" href="../index.html" aria-label="생존자의 베이스캠프로 돌아가기" style="position:fixed;left:10px;top:10px;z-index:999999;background:rgba(16,24,25,.90);border:1px solid #bda06c;color:#fff3db;text-decoration:none;border-radius:10px;padding:7px 11px;font:700 12px system-ui,'Malgun Gothic',sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);">← 베이스캠프</a><script src="../assets/hs-sync-v13.js"></script></body></html>

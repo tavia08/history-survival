@@ -197,4 +197,4 @@ document.querySelectorAll('[data-stage]').forEach(b=>b.addEventListener('click',
 let resume='gahan';try{const saved=sessionStorage.getItem('HistorySurvivor_selectedStage');if(stages[saved])resume=saved}catch(e){}selectStage(resume);
 $('history').addEventListener('click',()=>{slide=0;openDialog('history')});$('records').addEventListener('click',()=>openDialog('records'));$('settings').addEventListener('click',()=>openDialog('settings'));
 $('start').addEventListener('click',()=>{slide=0;openDialog(stages[selected].live?'history':'wait')});$('close').addEventListener('click',closeDialog);overlay.addEventListener('click',e=>{if(e.target===overlay)closeDialog()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)closeDialog()});
-</script></body></html>
+</script><script src="assets/hs-sync-v13.js"></script><a href="https://tavia08.github.io/history-hub/" style="position:fixed;z-index:4500;top:8px;right:8px;padding:9px 12px;border-radius:9px;background:#48301b;color:#ffe9b8;text-decoration:none;border:1px solid #ad8b5a;font:700 12px system-ui">← 역사 학습실로</a></body></html>
