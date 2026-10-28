@@ -24,6 +24,16 @@
 
 /* Ranking UI is contained inside the existing records dialog. */
 .rank-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 16px}.rank-tab{padding:11px 18px;border:1px solid #d8b377;border-radius:12px;color:#fae7bf;background:linear-gradient(180deg,#44311b,#2a2219);font-weight:800;box-shadow:inset 0 1px 0 rgba(255,239,199,.16)}.rank-tab[aria-selected="true"]{background:linear-gradient(180deg,#f3d79a,#c08946);color:#2b1d10;border-color:#ffdba0;box-shadow:0 3px 12px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,250,221,.38)}.rank-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.rank-controls label{display:grid;gap:6px;color:#f7ddb4;font-size:13px;font-weight:700}.rank-controls select,.rank-controls input{min-width:0;width:100%;background:linear-gradient(180deg,#171411,#0f0f0e);color:#fff0cc;border:1px solid #997449;border-radius:10px;padding:12px 13px;box-shadow:inset 0 1px 0 rgba(255,239,214,.05)}.rank-list{width:100%;border-collapse:collapse;font-size:13px}.rank-list thead th{position:sticky;top:0;background:linear-gradient(180deg,#34281b,#241c15);z-index:1}.rank-list th,.rank-list td{border-bottom:1px solid rgba(103,83,56,.75);padding:11px 6px;text-align:center}.rank-list th{color:#f0cc91;font-weight:800}.rank-list tbody tr:nth-child(odd){background:rgba(255,244,213,.03)}.rank-scroll{max-height:37dvh;overflow:auto;margin-top:10px;border:1px solid rgba(159,126,79,.55);border-radius:12px;background:rgba(12,10,8,.24);padding:2px 10px 8px;box-shadow:inset 0 0 20px rgba(0,0,0,.14)}.rank-msg{font-size:13px;color:#f6d49e;line-height:1.7;min-height:22px}.rank-submit{background:linear-gradient(180deg,#efc87f,#be8642);border:1px solid #f5d39e;border-radius:12px;padding:12px 18px;font-weight:800;color:#211b13;cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,250,221,.35);margin-top:4px}.rank-submit:disabled{opacity:.5;cursor:default}.rank-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 14px}.rank-card{padding:12px 12px 10px;border-radius:14px;border:1px solid rgba(210,169,104,.7);background:linear-gradient(180deg,rgba(41,29,18,.92),rgba(24,19,14,.92));box-shadow:inset 0 1px 0 rgba(255,247,228,.08)}.rank-card strong{display:block;color:#f3cd8d;font-size:12px;margin-bottom:6px;letter-spacing:.06em}.rank-card span{font-size:22px;font-weight:900;color:#fff0cc}.rank-help{margin-top:10px;padding:12px 14px;border-radius:12px;border:1px solid rgba(195,151,91,.58);background:rgba(46,32,18,.48);font-size:12px;line-height:1.7;color:#e4cfad}.rank-caption{font-size:12px;color:#e7c793;margin-top:6px}@media(max-width:560px){.rank-controls,.rank-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.rank-list{font-size:11px}}@media(max-width:420px){.rank-controls,.rank-summary{grid-template-columns:1fr}}
+
+/* Illustrated historical prologue. Captions are HTML, never baked into the artwork. */
+.dialog.history-dialog{width:min(980px,96vw);padding:clamp(14px,2.2vw,26px)}
+.dialog.history-dialog h2{font-size:clamp(21px,2.6vw,30px);margin:8px 0 12px}
+.dialog.history-dialog #dialogText{font-size:clamp(13px,1.6vw,16px);line-height:1.75;margin:14px 3px;white-space:pre-line}
+.story-art{width:100%;height:clamp(165px,37vh,350px);object-fit:cover;object-position:center;display:block;border:3px solid #ad8249;border-radius:13px;box-shadow:0 7px 22px #05040380;background:#281f15}
+.story-art.is-character{object-fit:contain;object-position:center;background:radial-gradient(ellipse,#4b3421,#1b1712)}
+.story-fact{border-left:4px solid #d1a665;padding:6px 11px;margin-top:8px;font-size:12px;color:#e9d3af;background:#2a2118}
+.dialog.history-dialog .actions{margin-top:10px;position:sticky;bottom:0;padding-top:12px;padding-bottom:3px;background:#1d1814}
+@media(max-width:600px){.dialog.history-dialog{max-height:94dvh}.story-art{height:clamp(145px,31vh,240px)}}
 </style></head><body><main class="shell"><section class="stage" aria-label="생존자의 베이스캠프 전장 선택 화면">
 <img id="panel-gahan" class="stage-panel" src="assets/panel_gahan.png" alt="" aria-hidden="true"><img id="panel-hwang" class="stage-panel" src="assets/panel_hwang.png" alt="" aria-hidden="true"><img id="panel-cheong" class="stage-panel" src="assets/panel_cheong.png" alt="" aria-hidden="true"><button class="hit h-gahan" data-stage="gahan" aria-label="가한목 전투 선택"></button><button class="hit h-hwang" data-stage="hwang" aria-label="황산벌 전투 선택"></button><button class="hit h-cheong" data-stage="cheong" aria-label="청해진의 밤 선택"></button>
 <button class="hit h-history" id="history" aria-label="역사 이야기 열기"></button><button class="hit h-record" id="records" aria-label="생존 기록 보기"></button><button class="hit h-start" id="start" aria-label="선택한 전장 전투개시"></button><button class="hit h-settings" id="settings" aria-label="설정 열기"></button>
@@ -32,42 +42,47 @@
 <script src="ranking-config.js"></script>
 <script>
 'use strict';
-const HUB_VERSION='v3.1';
+const HUB_VERSION='v3.2';
 const stages={
  gahan:{name:'가한목 전투',era:'1108년 · 고려',desc:'여진 정벌에 나선 고려군의 위기. 척준경이 되어 윤관을 찾고 안전하게 호위하세요.',goals:['본진을 방어하며 생존하기','윤관을 수색하여 찾아내기','윤관을 안전하게 호위하기'],live:true},
  hwang:{name:'황산벌 전투',era:'660년 · 백제',desc:'백제의 마지막 저항이 이어진 황산벌에서 계백의 이야기와 치열한 전투를 만납니다.',goals:['황산벌 전장에서 생존하기','위협을 피하며 전투 이어가기'],live:true},
  cheong:{name:'청해진의 밤',era:'9세기 · 신라 하대',desc:'장보고가 활동한 청해진을 배경으로 야간 해안 전장에서 생존에 도전합니다.',goals:['청해진의 야간 전장에서 생존하기','적의 공세를 견뎌내기'],live:true}
 };
 const slides=[
- ['1107년 · 여진 정벌','고려는 왜 여진 정벌에 나섰을까?','고려는 북방에서 여진 세력과 충돌했습니다. 윤관은 별무반을 편성하여 1107년 여진 정벌에 나섰고, 정벌 지역에 여러 성을 쌓았습니다.'],
- ['1108년 · 위기의 전장','가한촌 일대에서 위기가 닥치다','여진의 반격 속에서 고려군은 계속 전투를 벌였습니다. 윤관 등이 이끈 고려군이 가한촌 일대에서 위기에 처했고, 구원 전투가 펼쳐졌다는 기록이 전해집니다.'],
- ['고려의 무장 · 척준경','위기에 뛰어든 무장','척준경은 윤관의 여진 정벌에서 용맹한 활약을 펼친 고려 무장입니다. 게임 속에서는 척준경이 되어 윤관을 구출하는 임무를 수행합니다.'],
- ['조작 안내 · 전투 직전','척준경이 되어 출격하세요','이동: WASD · 방향키 · 화면 터치 조이스틱\n공격: 적에게 접근하면 도끼 자동 공격\n임무: 본진 방어 → 윤관 수색 → 윤관 호위\n전투 시작을 누르면 곧바로 진행됩니다.']
+ ['1107년 · 여진 정벌','북방에서 시작된 전쟁','12세기 초 고려는 북방의 여진과 충돌했습니다. 기병을 활용하는 여진군에 대응하기 위해 윤관의 건의로 별무반을 조직했습니다. 별무반은 신기군, 신보군, 항마군 등으로 구성되었으며, 윤관은 1107년 여진 정벌을 시작했습니다.'],
+ ['1108년 · 고려군의 위기','가한촌에서 포위된 윤관','고려군은 여진을 공격하여 여러 지역에 성을 쌓았지만 여진의 반격도 거셌습니다. 1108년 가한촌 일대에서 윤관 등이 이끄는 고려군은 여진군의 공격으로 위기에 처했습니다. 퇴로가 막힌 고려군에는 구원이 절실했습니다.'],
+ ['고려의 무장 · 척준경','전장에 뛰어든 척준경','척준경은 윤관의 여진 정벌에서 뛰어난 무공을 세운 고려의 무장입니다. 위기에 처한 고려군을 구하는 과정에서도 활약했습니다. 게임은 이러한 구원 활동을 바탕으로 수색과 호위 임무를 새롭게 구성했습니다.'],
+ ['게임 임무 · 조작 안내','당신은 척준경입니다!','윤관이 여진군의 공격으로 위기에 처했습니다. 본진을 방어하고 윤관을 찾아 안전하게 호위하세요.\n\n이동: 방향키 또는 화면 조이스틱\n공격: 가까운 적에게 도끼 자동 공격\n목표: 본진 방어 → 윤관 수색 → 윤관 호위\n\n※ 수색 장소와 호위 경로는 게임을 위한 재구성입니다.']
 ];
-
 const extraSlides={
  hwang:[
-  ['660년 · 삼국의 경쟁','백제는 왜 위기에 빠졌을까?','7세기 중반 신라는 당과 연합하여 백제를 공격했습니다. 백제는 국경을 지키기 위해 군대를 모아 맞섰습니다.'],
-  ['황산벌 · 계백','계백이 이끄는 백제군','계백은 황산벌에서 백제군을 지휘하며 신라군의 진격을 막으려 했습니다. 신라군은 김유신이 이끌었습니다.'],
-  ['황산벌 전투','치열한 싸움의 결과','황산벌에서 백제군은 신라군에 맞서 싸웠지만 패배했습니다. 이후 나당 연합군의 공격으로 백제는 멸망했습니다.'],
-  ['조작 안내 · 전투 직전','황산벌로 출격하세요','이동: WASD · 방향키 · 화면 터치 조이스틱\n공격: 가까운 적에게 자동 공격\n강화: 획득한 경험치로 능력 강화\n목표: 6분간 생존하고 지휘부 격퇴 (게임 속 가상 역사)']
+  ['660년 · 백제의 위기','백제의 운명을 건 전쟁','7세기 중반 신라는 당과 동맹을 맺어 백제를 공격했습니다. 660년 당의 군대가 바다를 건너 백제로 향했고, 김유신이 이끄는 신라군도 백제의 수도를 향해 진격했습니다. 백제는 나라의 운명이 걸린 위기에 놓였습니다.'],
+  ['백제의 장군 · 계백','황산벌로 향한 결사대','계백은 신라군의 진격을 막기 위해 5천 명의 결사대를 이끌고 황산벌로 향했습니다. 백제군은 수적으로 불리했지만 마지막 방어선을 지키기 위해 싸웠습니다.'],
+  ['황산벌의 격전','계백의 마지막 저항','황산벌에서 계백의 백제군은 김유신이 이끄는 신라군과 맞서 싸웠습니다. 치열한 저항에도 백제군은 패배했고 계백도 전사했습니다. 이후 사비성이 함락되면서 백제는 멸망했습니다.'],
+  ['게임 임무 · 조작 안내','당신은 백제군 병사입니다!','당신은 계백의 지휘 아래 황산벌을 지키는 일반 백제군 병사입니다. 몰려오는 적을 피해 끝까지 살아남으세요.\n\n이동: 방향키 또는 화면 조이스틱\n공격: 가까운 적에게 자동 공격\n강화: 경험치를 모아 능력 강화\n목표: 6분간 생존\n\n※ 실제 전투에서 백제군은 패배했으며 게임 속 생존은 가상 임무입니다.']
  ],
  cheong:[
-  ['9세기 · 신라 하대','바다의 중요성이 커지다','통일 신라 시대에는 동아시아 여러 지역을 오가는 해상 교역이 활발했습니다. 하지만 해상에는 해적의 위협도 존재했습니다.'],
-  ['장보고 · 청해진','장보고는 왜 청해진을 세웠을까?','장보고는 828년 오늘날 완도에 청해진을 설치하고 해적을 막으며 해상 교역의 안전을 확보하고자 했습니다.'],
-  ['청해진의 활약','무역의 중심지가 된 청해진','청해진은 신라와 당, 일본을 잇는 해상 교류에서 중요한 역할을 했습니다. 장보고는 이곳을 기반으로 영향력을 넓혔습니다.'],
-  ['조작 안내 · 전투 직전','청해진에서 장보고를 호위하세요','이동: WASD · 방향키 · 화면 터치 조이스틱\n공격: 가까운 적에게 검 자동 공격\n지원: 호위대와 특수 기술 활용\n목표: 장보고를 보호하며 염장을 막고 6분간 생존 (창작 임무)']
+  ['9세기 · 신라 하대','해적의 위협을 받던 신라의 바다','9세기 신라는 당과 일본을 잇는 해상 교역이 활발했습니다. 그러나 바다에서는 해적들이 상선을 약탈하고 사람들을 납치했습니다. 안전한 항로를 확보하는 일은 중요한 과제였습니다.'],
+  ['828년 · 청해진 설치','장보고, 청해진을 세우다','장보고는 당에서 군사 활동과 국제 교역을 경험했습니다. 신라로 돌아온 그는 828년 오늘날 완도에 청해진을 설치했습니다. 청해진은 해적을 막는 군사 기지이자 국제 교역의 거점으로 발전했습니다.'],
+  ['장보고와 염장','장보고의 죽음과 청해진의 운명','장보고는 신라 왕위 계승을 둘러싼 정치적 갈등에 관여했습니다. 이후 왕실과 관계가 악화된 장보고는 염장에게 암살당했습니다. 청해진은 장보고가 죽은 뒤에도 유지되다가 851년 폐지되었습니다.'],
+  ['게임 임무 · 조작 안내','당신은 장보고의 호위무사입니다!','게임 속 가상의 야간 전투가 시작됩니다. 호위무사가 되어 청해진을 지키고 적을 막아내세요.\n\n이동: 방향키 또는 화면 조이스틱\n공격: 가까운 적에게 검 자동 공격\n지원: 호위대 소환 및 특수 기술 활용\n목표: 6분간 생존\n\n※ 염장이 군대를 이끌고 야간에 청해진을 공격하는 장면은 창작 설정입니다.']
  ]
 };
 let selected='gahan',slide=0,mode='';let lastFocus=null;
 const $=id=>document.getElementById(id),overlay=$('overlay'),actions=$('dialogActions');
 function button(label,fn,primary=false,disabled=false){const b=document.createElement('button');b.type='button';b.className='nav-btn'+(primary?' primary':'');b.textContent=label;b.disabled=disabled;b.addEventListener('click',fn);actions.appendChild(b);return b;}
-function openDialog(kind){lastFocus=document.activeElement;mode=kind;overlay.hidden=false;renderDialog();$('close').focus();}
+function openDialog(kind){lastFocus=document.activeElement;mode=kind;$('overlay').querySelector('.dialog').classList.toggle('history-dialog',kind==='history');overlay.hidden=false;renderDialog();$('close').focus();}
 function closeDialog(){overlay.hidden=true;if(lastFocus?.focus)lastFocus.focus();}
 function renderDialog(){actions.replaceChildren();$('dialogNote').textContent='';const s=stages[selected];
  if(mode==='history'){
   const set=selected==='gahan'?slides:extraSlides[selected];
-  $('dialogKicker').textContent=set[slide][0];$('dialogTitle').textContent=set[slide][1];$('dialogText').textContent=set[slide][2];
+  $('dialogKicker').textContent=set[slide][0];$('dialogTitle').textContent=set[slide][1];
+  const storyBox=$('dialogText');storyBox.replaceChildren();
+  const pic=document.createElement('img');pic.className='story-art'+(slide===3?' is-character':'');pic.src='assets/prologue/'+selected+'_'+(slide+1)+'.webp';pic.alt=stages[selected].name+' '+(slide+1)+'번째 역사 장면 일러스트';pic.loading='eager';
+  const passage=document.createElement('div');passage.textContent=set[slide][2];passage.style.whiteSpace='pre-line';
+  const fact=document.createElement('div');fact.className='story-fact';fact.textContent=slide===3?'게임 임무는 실제 역사적 사건을 바탕으로 재구성되었습니다.':'역사적 배경을 확인한 뒤 다음 장면으로 이동하세요.';
+  storyBox.append(pic,passage,fact);
+
   $('dialogNote').textContent='역사적 사실과 게임을 위해 재구성한 상황을 구분해 설명했습니다.';
   button('이전',()=>{slide=Math.max(0,slide-1);renderDialog()},false,slide===0);
   const n=document.createElement('span');n.className='step';n.textContent=`${slide+1} / ${set.length}`;actions.appendChild(n);
