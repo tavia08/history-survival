@@ -866,6 +866,7 @@ window.__qa.runFullScenario=(seed=1, targetIndex=3, searchBefore=0, patrolMode='
 </script><script>
 (()=>{'use strict';
 const guide=document.getElementById('guide'),teacher=document.getElementById('teacherTools');window.__studentGuideOpen=true;
+if(new URLSearchParams(location.search).get('survivorStart')==='1'){guide.hidden=true;window.__studentGuideOpen=false;}
 const openGuide=()=>{guide.hidden=false;window.__studentGuideOpen=true;document.getElementById('guideClose').focus();};
 document.getElementById('guideClose').addEventListener('click',()=>{guide.hidden=true;window.__studentGuideOpen=false;});
 document.getElementById('helpBtn').addEventListener('click',openGuide);
