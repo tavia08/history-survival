@@ -82,6 +82,11 @@ const $=id=>document.getElementById(id),overlay=$('overlay'),actions=$('dialogAc
 function button(label,fn,primary=false,disabled=false){const b=document.createElement('button');b.type='button';b.className='nav-btn'+(primary?' primary':'');b.textContent=label;b.disabled=disabled;b.addEventListener('click',fn);actions.appendChild(b);return b;}
 function openDialog(kind){lastFocus=document.activeElement;mode=kind;$('overlay').querySelector('.dialog').classList.toggle('history-dialog',kind==='history');overlay.hidden=false;renderDialog();$('close').focus();}
 function closeDialog(){overlay.hidden=true;overlay.querySelector('.dialog').classList.remove('history-dialog');if(lastFocus?.focus)lastFocus.focus();}
+function launchSelectedSurvivalStage(){
+ const paths={gahan:'games/gahanmok.html?survivorStart=1',hwang:'games/hwangsanbeol.html?survivorStart=1',cheong:'games/cheonghaejin.html?survivorStart=1'};
+ if(stages[selected] && stages[selected].live && paths[selected]) window.location.href=paths[selected];
+}
+
 function renderDialog(){actions.replaceChildren();$('dialogNote').textContent='';const s=stages[selected];
  if(mode==='history'){
   const set=selected==='gahan'?slides:extraSlides[selected];
@@ -97,9 +102,11 @@ function renderDialog(){actions.replaceChildren();$('dialogNote').textContent=''
   button('이전',()=>{slide=Math.max(0,slide-1);renderDialog()},false,slide===0);
   const n=document.createElement('span');n.className='step';n.textContent=`${slide+1} / ${set.length}`;actions.appendChild(n);
   button(slide===set.length-1?(stages[selected].live?'전투 시작':'이야기 마치기'):'다음 이야기',()=>{
-    if(slide===set.length-1){if(stages[selected].live)location.href=({gahan:'games/gahanmok.html?survivorStart=1',hwang:'games/hwangsanbeol.html?survivorStart=1',cheong:'games/cheonghaejin.html?survivorStart=1'})[selected];else closeDialog();}
+    if(slide===set.length-1){if(stages[selected].live)launchSelectedSurvivalStage();else closeDialog();}
     else {slide++;renderDialog();}
-  },true);return;
+  },true);
+  if(stages[selected].live)button('프롤로그 건너뛰기 →',launchSelectedSurvivalStage);
+  return;
  }
  if(mode==='records'){
    $('dialogKicker').textContent='생존 기록 · 명예의 전당';
