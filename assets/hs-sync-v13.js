@@ -36,7 +36,7 @@
   catch(err){status('개인 기록 저장 실패: '+err.message);return null}
  }
  function addUI(){if(!document.body||document.getElementById('hs-login-state'))return;
-  const box=document.createElement('div');box.id='hs-sync-box';box.style.cssText='position:fixed;left:8px;bottom:8px;max-width:min(92vw,360px);z-index:4000;padding:9px 12px;background:#302419;color:#fff0c9;border:1px solid #b18b47;border-radius:10px;font:12px/1.5 system-ui;box-shadow:0 4px 18px #0008';
+  const box=document.createElement('div');box.id='hs-sync-box';box.style.cssText='display:none;position:fixed;left:8px;bottom:8px;max-width:min(92vw,360px);z-index:4000;padding:9px 12px;background:#302419;color:#fff0c9;border:1px solid #b18b47;border-radius:10px;font:12px/1.5 system-ui;box-shadow:0 4px 18px #0008';
   const line=document.createElement('div');line.id='hs-login-state';const record=document.createElement('div');record.id='hs-best-state';record.style.opacity='.85';box.append(line,record);document.body.append(box);render();if(session())load();
  }
  document.addEventListener('DOMContentLoaded',addUI);if(document.readyState!=='loading')addUI();
