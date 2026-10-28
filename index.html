@@ -32,8 +32,17 @@
 .story-art{width:100%;height:clamp(165px,37vh,350px);object-fit:cover;object-position:center;display:block;border:3px solid #ad8249;border-radius:13px;box-shadow:0 7px 22px #05040380;background:#281f15}
 .story-art.is-character{object-fit:contain;object-position:center;background:radial-gradient(ellipse,#4b3421,#1b1712)}
 .story-fact{border-left:4px solid #d1a665;padding:6px 11px;margin-top:8px;font-size:12px;color:#e9d3af;background:#2a2118}
-.dialog.history-dialog .actions{margin-top:10px;position:sticky;bottom:0;padding-top:12px;padding-bottom:3px;background:#1d1814}
-@media(max-width:600px){.dialog.history-dialog{max-height:94dvh}.story-art{height:clamp(145px,31vh,240px)}}
+.dialog.history-dialog{display:flex;flex-direction:column;overflow:hidden;max-height:min(92dvh,850px)}
+.dialog.history-dialog .dialog-top,.dialog.history-dialog h2{flex-shrink:0}
+.dialog.history-dialog #dialogText{overflow-y:auto;min-height:0;flex:1;scrollbar-color:#cba26d #231b13;padding:0 5px 8px;overscroll-behavior:contain}
+.dialog.history-dialog .actions{margin-top:10px;flex-shrink:0;padding-top:12px;padding-bottom:3px;border-top:1px solid #795a32;background:#201811}
+.dialog.history-dialog #dialogNote{margin:6px 2px 0;flex-shrink:0;font-size:11px!important;line-height:1.4}
+.story-art{max-height:min(37dvh,350px)}
+.story-fact{line-height:1.55}
+
+@media(max-width:600px){.dialog.history-dialog{max-height:95dvh;padding:14px}.story-art{height:clamp(125px,28vh,220px)}.dialog.history-dialog #dialogText{font-size:14px;line-height:1.65}.dialog.history-dialog .actions{gap:6px}.dialog.history-dialog .nav-btn{padding:10px 12px}}
+@media(max-height:600px){.dialog.history-dialog{max-height:96dvh;padding:12px 18px}.story-art{height:clamp(118px,26vh,195px)}.dialog.history-dialog h2{margin:2px 0 7px;font-size:22px}.dialog.history-dialog #dialogText{line-height:1.55;margin:6px 0}.dialog.history-dialog .actions{padding-top:7px;margin-top:5px}.dialog.history-dialog #dialogNote{display:none}}
+
 </style></head><body><main class="shell"><section class="stage" aria-label="생존자의 베이스캠프 전장 선택 화면">
 <img id="panel-gahan" class="stage-panel" src="assets/panel_gahan.png" alt="" aria-hidden="true"><img id="panel-hwang" class="stage-panel" src="assets/panel_hwang.png" alt="" aria-hidden="true"><img id="panel-cheong" class="stage-panel" src="assets/panel_cheong.png" alt="" aria-hidden="true"><button class="hit h-gahan" data-stage="gahan" aria-label="가한목 전투 선택"></button><button class="hit h-hwang" data-stage="hwang" aria-label="황산벌 전투 선택"></button><button class="hit h-cheong" data-stage="cheong" aria-label="청해진의 밤 선택"></button>
 <button class="hit h-history" id="history" aria-label="역사 이야기 열기"></button><button class="hit h-record" id="records" aria-label="생존 기록 보기"></button><button class="hit h-start" id="start" aria-label="선택한 전장 전투개시"></button><button class="hit h-settings" id="settings" aria-label="설정 열기"></button>
@@ -42,7 +51,7 @@
 <script src="ranking-config.js"></script>
 <script>
 'use strict';
-const HUB_VERSION='v3.2';
+const HUB_VERSION='v3.3';
 const stages={
  gahan:{name:'가한목 전투',era:'1108년 · 고려',desc:'여진 정벌에 나선 고려군의 위기. 척준경이 되어 윤관을 찾고 안전하게 호위하세요.',goals:['본진을 방어하며 생존하기','윤관을 수색하여 찾아내기','윤관을 안전하게 호위하기'],live:true},
  hwang:{name:'황산벌 전투',era:'660년 · 백제',desc:'백제의 마지막 저항이 이어진 황산벌에서 계백의 이야기와 치열한 전투를 만납니다.',goals:['황산벌 전장에서 생존하기','위협을 피하며 전투 이어가기'],live:true},
@@ -72,16 +81,17 @@ let selected='gahan',slide=0,mode='';let lastFocus=null;
 const $=id=>document.getElementById(id),overlay=$('overlay'),actions=$('dialogActions');
 function button(label,fn,primary=false,disabled=false){const b=document.createElement('button');b.type='button';b.className='nav-btn'+(primary?' primary':'');b.textContent=label;b.disabled=disabled;b.addEventListener('click',fn);actions.appendChild(b);return b;}
 function openDialog(kind){lastFocus=document.activeElement;mode=kind;$('overlay').querySelector('.dialog').classList.toggle('history-dialog',kind==='history');overlay.hidden=false;renderDialog();$('close').focus();}
-function closeDialog(){overlay.hidden=true;if(lastFocus?.focus)lastFocus.focus();}
+function closeDialog(){overlay.hidden=true;overlay.querySelector('.dialog').classList.remove('history-dialog');if(lastFocus?.focus)lastFocus.focus();}
 function renderDialog(){actions.replaceChildren();$('dialogNote').textContent='';const s=stages[selected];
  if(mode==='history'){
   const set=selected==='gahan'?slides:extraSlides[selected];
   $('dialogKicker').textContent=set[slide][0];$('dialogTitle').textContent=set[slide][1];
-  const storyBox=$('dialogText');storyBox.replaceChildren();
-  const pic=document.createElement('img');pic.className='story-art'+(slide===3?' is-character':'');pic.src='assets/prologue/'+selected+'_'+(slide+1)+'.webp';pic.alt=stages[selected].name+' '+(slide+1)+'번째 역사 장면 일러스트';pic.loading='eager';
+  const storyBox=$('dialogText');storyBox.replaceChildren();storyBox.style.whiteSpace='normal';storyBox.scrollTop=0;
+  const pic=document.createElement('img');pic.className='story-art'+(slide===3?' is-character':'');pic.src='assets/prologue/'+selected+'_'+(slide+1)+'.webp';pic.alt=stages[selected].name+' '+(slide+1)+'번째 역사 장면 일러스트';pic.loading='eager';pic.decoding='async';pic.onerror=()=>{pic.hidden=true;};
   const passage=document.createElement('div');passage.textContent=set[slide][2];passage.style.whiteSpace='pre-line';
   const fact=document.createElement('div');fact.className='story-fact';fact.textContent=slide===3?'게임 임무는 실제 역사적 사건을 바탕으로 재구성되었습니다.':'역사적 배경을 확인한 뒤 다음 장면으로 이동하세요.';
   storyBox.append(pic,passage,fact);
+  passage.className='story-passage';
 
   $('dialogNote').textContent='역사적 사실과 게임을 위해 재구성한 상황을 구분해 설명했습니다.';
   button('이전',()=>{slide=Math.max(0,slide-1);renderDialog()},false,slide===0);
