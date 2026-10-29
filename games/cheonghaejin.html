@@ -702,15 +702,114 @@ function takeSupplyCrate(){let roll=Math.random();if(roll<.58){const amount=roll
 function updateCrates(dt){for(let i=crates.length-1;i>=0;i--){const c=crates[i];c.life-=dt;if(distance(c,player)<32){takeSupplyCrate();crates.splice(i,1)}else if(c.life<=0)crates.splice(i,1)}}
 function drawSupplyCrates(){for(const c of crates){ctx.save();ctx.translate(c.x,c.y);const pulse=1+Math.sin(time*5+c.id)*.06;ctx.scale(pulse,pulse);ctx.fillStyle='rgba(21,34,22,.28)';ctx.beginPath();ctx.ellipse(0,22,22,9,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='rgba(255,222,140,.34)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,6,26+3*Math.sin(time*4+c.id),0,Math.PI*2);ctx.stroke();if(crateSprite.complete&&crateSprite.naturalWidth){ctx.drawImage(crateSprite,-26,-18,52,52);}else{ctx.fillStyle='#8b552d';ctx.fillRect(-18,-8,36,24);ctx.strokeStyle='#f2d08c';ctx.strokeRect(-18,-8,36,24);}ctx.fillStyle='#fff4ca';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('보급',0,-30);ctx.restore()}for(const c of crates){ctx.save();ctx.fillStyle='#ffebb8';ctx.textAlign='center';ctx.font='bold 12px sans-serif';ctx.fillText('보급상자 '+Math.ceil(c.life)+'초',c.x,c.y-42);ctx.restore();}}
 function drawSupplyIndicators(){if(!player||!crates.length)return;for(const c of crates){const dx=c.x-player.x,dy=c.y-player.y;const onScreen=Math.abs(dx)<w*.43&&Math.abs(dy)<h*.41;if(onScreen)continue;const a=Math.atan2(dy,dx);const padding=56;const sideX=Math.max(36,w*.5-padding),sideY=Math.max(36,h*.5-padding);const scale=Math.min(sideX/Math.max(1,Math.abs(dx)),sideY/Math.max(1,Math.abs(dy)));const xx=w*.5+dx*scale,yy=h*.5+dy*scale;ctx.save();ctx.translate(xx,yy);ctx.rotate(a);ctx.fillStyle='#ffe2a1';ctx.strokeStyle='#5e431e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(17,0);ctx.lineTo(-11,-11);ctx.lineTo(-11,11);ctx.closePath();ctx.fill();ctx.stroke();ctx.rotate(-a);ctx.textAlign='center';ctx.font='bold 12px sans-serif';ctx.strokeStyle='#172831';ctx.lineWidth=3;const msg='보급 '+Math.ceil(c.life)+'초';ctx.strokeText(msg,0,-21);ctx.fillStyle='#fff0be';ctx.fillText(msg,0,-21);ctx.restore()}}
+
+// v3.7: companion obstacle detours. Keeps the original collision radius and movement speed.
+// Companion route recovery v3.8: pathfind only when short-range steering stops making progress.
+// Uses the same collision shapes as the existing game; no teleporting or balance changes.
+function companionPlanRoute(unit, tx, ty, radius) {
+  const size=24, pad=170;
+  const left=Math.max(radius, Math.min(unit.x,tx)-pad);
+  const top=Math.max(radius, Math.min(unit.y,ty)-pad);
+  const right=Math.min(WORLD_W-radius, Math.max(unit.x,tx)+pad);
+  const bottom=Math.min(WORLD_H-radius, Math.max(unit.y,ty)+pad);
+  const cols=Math.max(2,Math.ceil((right-left)/size)+1),rows=Math.max(2,Math.ceil((bottom-top)/size)+1);
+  if(cols*rows>4500)return null;
+  const loc=id=>({x:Math.min(right,left+(id%cols)*size),y:Math.min(bottom,top+Math.floor(id/cols)*size)});
+  const cell=(x,y)=>Math.max(0,Math.min(rows-1,Math.round((y-top)/size)))*cols+
+    Math.max(0,Math.min(cols-1,Math.round((x-left)/size)));
+  const clearCache=new Int8Array(cols*rows);
+  function clear(id) {
+    if(clearCache[id])return clearCache[id]===1;
+    const p=loc(id);
+    const allowed=!terrainBlocks.some(o=>bodyHitsShape(p.x,p.y,radius+4,o));
+    clearCache[id]=allowed?1:2;
+    return allowed;
+  }
+  function nearest(x,y, requireReachable=false){
+    let chosen=-1,best=Infinity,ix=Math.round((x-left)/size),iy=Math.round((y-top)/size);
+    for(let r=0;r<6;r++){
+      for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+        const cx=ix+dx,cy=iy+dy;
+        if(cx<0||cy<0||cx>=cols||cy>=rows)continue;
+        const n=cy*cols+cx;if(!clear(n))continue;
+        const p=loc(n),d=Math.hypot(p.x-x,p.y-y);
+        if(requireReachable){const moved=moveWithCollision(x,y,p.x,p.y,radius);if(Math.hypot(moved.x-p.x,moved.y-p.y)>3)continue;}
+        if(d<best){best=d;chosen=n;}
+      }
+      if(chosen>=0)return chosen;
+    }
+    return -1;
+  }
+  const from=nearest(unit.x,unit.y,true),to=nearest(tx,ty);
+  if(from<0||to<0)return null;
+  const prev=new Int32Array(cols*rows).fill(-1);
+  const queue=[from];let qi=0;prev[from]=from;
+  const directions=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(qi<queue.length&&queue.length<4500){
+    const n=queue[qi++];if(n===to)break;
+    const cx=n%cols,cy=Math.floor(n/cols);
+    for(const [dx,dy] of directions){
+      const xx=cx+dx,yy=cy+dy;if(xx<0||yy<0||xx>=cols||yy>=rows)continue;
+      const next=yy*cols+xx;
+      if(prev[next]!==-1||!clear(next))continue;
+      const a=loc(n),b=loc(next),walk=moveWithCollision(a.x,a.y,b.x,b.y,radius);
+      if(Math.hypot(walk.x-b.x,walk.y-b.y)>2)continue;
+      prev[next]=n;queue.push(next);
+    }
+  }
+  if(prev[to]===-1)return null;
+  const cells=[];let n=to;
+  while(n!==from&&cells.length<4500){cells.push(n);n=prev[n];}
+  cells.reverse();
+  return {points:cells.map(loc),targetX:tx,targetY:ty,idx:0};
+}
+function companionStep(unit,tx,ty,dt,speed,radius){
+  const total=Math.hypot(tx-unit.x,ty-unit.y);
+  if(total<2){unit._companionPath=null;return;}
+  const directClear=!terrainBlocks.some(o=>bodyHitsShape(unit.x,unit.y,radius,o)) &&
+    !segmentBlocked(unit.x,unit.y,tx,ty);
+  if(unit._companionPath && Math.hypot(unit._companionPath.targetX-tx,unit._companionPath.targetY-ty)>65){
+    unit._companionPath=null;
+  }
+  let route=unit._companionPath;
+  if(route){while(route.idx<route.points.length&&Math.hypot(route.points[route.idx].x-unit.x,route.points[route.idx].y-unit.y)<16)route.idx++;
+    if(route.idx>=route.points.length){unit._companionPath=null;route=null;}
+  }
+  let goal=route?route.points[route.idx]:{x:tx,y:ty};
+  let dx=goal.x-unit.x,dy=goal.y-unit.y,d=Math.hypot(dx,dy);
+  if(d<.01)return;
+  const move=Math.min(d,Math.max(0,speed*dt));
+  const next=moveWithCollision(unit.x,unit.y,unit.x+dx/d*move,unit.y+dy/d*move,radius);
+  const before=Math.hypot(tx-unit.x,ty-unit.y),traveled=Math.hypot(next.x-unit.x,next.y-unit.y);
+  unit.x=next.x;unit.y=next.y;
+  const after=Math.hypot(tx-unit.x,ty-unit.y);
+  if(route){
+    if(traveled<.05){unit._routeBlocked=(unit._routeBlocked||0)+dt;if(unit._routeBlocked>.85){unit._companionPath=null;unit._companionReplanTimer=0;unit._routeBlocked=0;}}else unit._routeBlocked=0;
+  }else if(!directClear){
+    // Straight line is blocked: compute a grid detour once, even if axis sliding occurs.
+    unit._companionReplanTimer=(unit._companionReplanTimer||0)-dt;
+    if(unit._companionReplanTimer<=0){
+      const computed=companionPlanRoute(unit,tx,ty,radius);
+      if(computed)unit._companionPath=computed;
+      unit._companionReplanTimer=computed?1.2:.65;
+    }
+  }else{
+    unit._companionReplanTimer=0;
+  }
+}
+
 function update(dt){time+=dt;if(jangbogo)jangbogo.inv=Math.max(0,jangbogo.inv-dt);
  // 호위 대상 길찾기 및 충돌 처리.
  if(jangbogo){const distanceToGuard=Math.hypot(player.x-jangbogo.x,player.y-jangbogo.y);
   if(distanceToGuard>72){let ux=(player.x-jangbogo.x)/distanceToGuard,uy=(player.y-jangbogo.y)/distanceToGuard;
    const followSpeed=(distanceToGuard>140?182:156);
-   const walked=moveWithCollision(jangbogo.x,jangbogo.y,jangbogo.x+ux*followSpeed*dt,jangbogo.y+uy*followSpeed*dt,19);
-   jangbogo.x=walked.x; jangbogo.y=walked.y; }
+   const route=segmentBlocked(jangbogo.x,jangbogo.y,player.x,player.y)?navSeek(jangbogo,player.x,player.y):{x:ux,y:uy};
+   const wayX=jangbogo.x+route.x*Math.min(120,distanceToGuard),wayY=jangbogo.y+route.y*Math.min(120,distanceToGuard);
+   companionStep(jangbogo,wayX,wayY,dt,followSpeed,19); }
  }
-const p=phase();for(const [at,msg] of [[120,'청해진에 적의 증원 병력이 접근합니다!'],[360,'전투의 결말이 다가옵니다!']])if(time>=at&&!flags.has(at)){flags.add(at);announce(msg,4)}for(const at of [60,180,240,300,330])if(time>=at&&!flags.has('history'+at)){flags.add('history'+at);historicalBeat(at);return}moraleBoost=Math.max(0,moraleBoost-dt);historyBonus=Math.max(0,historyBonus-dt);cooldowns=cooldowns.map(a=>Math.max(0,a-dt));shieldTime=Math.max(0,shieldTime-dt);shieldCounter=Math.max(0,shieldCounter-dt);player.inv=Math.max(0,player.inv-dt);attackBuff=Math.max(0,attackBuff-dt);guardBuff=Math.max(0,guardBuff-dt);let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0)+stick.x,dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0)+stick.y;let len=Math.hypot(dx,dy);playerMoving=len>0.04;if(len){const speed=(176+speedLv*18)*moveFactorAt(player.x,player.y);const pos=moveWithCollision(player.x,player.y,player.x+dx/Math.max(1,len)*speed*dt,player.y+dy/Math.max(1,len)*speed*dt,PLAYER_RADIUS);player.x=pos.x;player.y=pos.y;}clampCamera();navElapsed+=dt;navRebuild();spawnTimer-=dt;const rates=[1.65,2.20,2.85,4.15,5.35,6.7];if(spawnTimer<=0){spawnTimer=1/(rates[p]*(enemySurge?1.26:1));const r=Math.random();let kind='foot';if(p>=1&&r>.68)kind='archer';if(p>=2&&r>.42&&r<.62)kind='spear';if(p>=3&&r>.82)kind='elite';if(historyBonus>0&&r>.68)kind='elite';spawn(kind);if(p>=4&&Math.random()<.32)spawn(Math.random()<.28?'archer':'foot')}if(time>=300&&!bossSpawned){if(spawn('boss')){bossSpawned=true;announce('염장 등장! 장보고를 노리는 암살자를 저지하세요!',4);triggerYeomjangVisuals();}}attackTimer-=dt;bowTimer-=dt;if(attackTimer<=0){attackTimer=Math.max(.19,.85-attackLv*.072);let reach=118+attackLv*10;let target=nearest(player.x,player.y,reach+18);if(target){let a=Math.atan2(target.y-player.y,target.x-player.x);attackAngle=a;attackVisualStart=time;attackVisualUntil=time+0.34;let strikes=attackLv>=3?2:1;for(let k=0;k<strikes;k++){let angle=a+(k===0?-.22:.22),arc=attackLv>=5?1.18:.72;effects.push({type:'slash',x:player.x,y:player.y,angle,life:.36,rad:reach,arc});if(attackLv>=3)effects.push({type:'slash',x:player.x,y:player.y,angle:angle-.14,life:.21,rad:reach*.81,arc:arc*.9});let candidates=enemies.filter(e=>e.hp>0&&distance(e,player)<reach&&Math.abs(Math.atan2(Math.sin(Math.atan2(e.y-player.y,e.x-player.x)-angle),Math.cos(Math.atan2(e.y-player.y,e.x-player.x)-angle)))<arc/2);candidates.slice(0,attackLv>=5?8:attackLv>=3?5:3).forEach(e=>{damageEnemy(e,(22+attackLv*10)*(k?0.55:1)*(attackBuff>0?1.22:1));let dd=distance(e,player)||1;e.x+=(e.x-player.x)/dd*8;e.y+=(e.y-player.y)/dd*8});}if(evolution){enemies.filter(e=>e.hp>0&&distance(e,player)<155).forEach(e=>damageEnemy(e,13+attackLv*3));}shake=Math.min(3,shake+1.8)}}if(bowLv>0&&bowTimer<=0){bowTimer=Math.max(.34,1.35-bowLv*.13);let candidates=enemies.filter(e=>e.hp>0&&distance(e,player)<520).sort((a,b)=>distance(a,player)-distance(b,player));let count=bowLv>=4?3:bowLv>=2?2:1;for(let j=0;j<Math.min(count,candidates.length);j++){let e=candidates[j];fire(player.x,player.y,e.x,e.y,17+bowLv*9,'ally')}}for(let i=allies.length-1;i>=0;i--){let a=allies[i];a.life-=dt;a.cd-=dt;const tx=player.x+a.offX+Math.sin(time*2.2+i)*5,ty=player.y+a.offY+Math.cos(time*1.8+i)*4;const pos=moveWithCollision(a.x,a.y,a.x+(tx-a.x)*Math.min(1,dt*8.5),a.y+(ty-a.y)*Math.min(1,dt*8.5),14);a.x=pos.x;a.y=pos.y;let e=nearest(a.x,a.y,480);if(e){a.face=e.x>=a.x?1:-1;a.aim=Math.atan2(e.y-a.y,e.x-a.x)}if(a.cd<=0&&e){a.cd=Math.max(.48,.86-bowLv*.04);a.animStart=time;a.animUntil=time+.38;fire(a.x+(a.face>0?10:-10),a.y-4,e.x,e.y,Math.round((30+bowLv*5)*.90),'ally');effects.push({type:'spark',x:a.x+(a.face>0?10:-10),y:a.y-8,life:.18,rad:10})}if(a.life<=0)allies.splice(i,1)}for(let i=cavalryCharges.length-1;i>=0;i--){let c=cavalryCharges[i];c.delay-=dt;if(c.delay>0)continue;c.t+=dt;const p=clamp(c.t/c.duration,0,1);c.x=c.sx+(c.ex-c.sx)*p;c.y=c.sy+(c.ey-c.sy)*p;c.face=c.ex>=c.sx?1:-1;if(Math.random()<.6)effects.push({type:'dust',x:c.x-16*c.face,y:c.y+18,life:.2,rad:14});for(const foe of enemies){if(foe.hp>0&&!c.hitIds.includes(foe.id)&&distance(foe,c)<48){c.hitIds.push(foe.id);damageEnemy(foe,c.damage);let dd=distance(foe,c)||1;foe.x+=(foe.x-c.x)/dd*96;foe.y+=(foe.y-c.y)/dd*76;effects.push({type:'burst',x:foe.x,y:foe.y,life:.3,rad:28})}}if(c.t>=c.duration)cavalryCharges.splice(i,1)}for(const e of enemies){if(e.hp<=0)continue;e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const target=escortTarget(e);let d=distance(e,target)||1,ux=(target.x-e.x)/d,uy=(target.y-e.y)/d;let startX=e.x;const speed=e.speed*(enemySurge?1.12:1)*moveFactorAt(e.x,e.y);
+const p=phase();for(const [at,msg] of [[120,'청해진에 적의 증원 병력이 접근합니다!'],[360,'전투의 결말이 다가옵니다!']])if(time>=at&&!flags.has(at)){flags.add(at);announce(msg,4)}for(const at of [60,180,240,300,330])if(time>=at&&!flags.has('history'+at)){flags.add('history'+at);historicalBeat(at);return}moraleBoost=Math.max(0,moraleBoost-dt);historyBonus=Math.max(0,historyBonus-dt);cooldowns=cooldowns.map(a=>Math.max(0,a-dt));shieldTime=Math.max(0,shieldTime-dt);shieldCounter=Math.max(0,shieldCounter-dt);player.inv=Math.max(0,player.inv-dt);attackBuff=Math.max(0,attackBuff-dt);guardBuff=Math.max(0,guardBuff-dt);let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0)+stick.x,dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0)+stick.y;let len=Math.hypot(dx,dy);playerMoving=len>0.04;if(len){const speed=(176+speedLv*18)*moveFactorAt(player.x,player.y);const pos=moveWithCollision(player.x,player.y,player.x+dx/Math.max(1,len)*speed*dt,player.y+dy/Math.max(1,len)*speed*dt,PLAYER_RADIUS);player.x=pos.x;player.y=pos.y;}clampCamera();navElapsed+=dt;navRebuild();spawnTimer-=dt;const rates=[1.65,2.20,2.85,4.15,5.35,6.7];if(spawnTimer<=0){spawnTimer=1/(rates[p]*(enemySurge?1.26:1));const r=Math.random();let kind='foot';if(p>=1&&r>.68)kind='archer';if(p>=2&&r>.42&&r<.62)kind='spear';if(p>=3&&r>.82)kind='elite';if(historyBonus>0&&r>.68)kind='elite';spawn(kind);if(p>=4&&Math.random()<.32)spawn(Math.random()<.28?'archer':'foot')}if(time>=300&&!bossSpawned){if(spawn('boss')){bossSpawned=true;announce('염장 등장! 장보고를 노리는 암살자를 저지하세요!',4);triggerYeomjangVisuals();}}attackTimer-=dt;bowTimer-=dt;if(attackTimer<=0){attackTimer=Math.max(.19,.85-attackLv*.072);let reach=118+attackLv*10;let target=nearest(player.x,player.y,reach+18);if(target){let a=Math.atan2(target.y-player.y,target.x-player.x);attackAngle=a;attackVisualStart=time;attackVisualUntil=time+0.34;let strikes=attackLv>=3?2:1;for(let k=0;k<strikes;k++){let angle=a+(k===0?-.22:.22),arc=attackLv>=5?1.18:.72;effects.push({type:'slash',x:player.x,y:player.y,angle,life:.36,rad:reach,arc});if(attackLv>=3)effects.push({type:'slash',x:player.x,y:player.y,angle:angle-.14,life:.21,rad:reach*.81,arc:arc*.9});let candidates=enemies.filter(e=>e.hp>0&&distance(e,player)<reach&&Math.abs(Math.atan2(Math.sin(Math.atan2(e.y-player.y,e.x-player.x)-angle),Math.cos(Math.atan2(e.y-player.y,e.x-player.x)-angle)))<arc/2);candidates.slice(0,attackLv>=5?8:attackLv>=3?5:3).forEach(e=>{damageEnemy(e,(22+attackLv*10)*(k?0.55:1)*(attackBuff>0?1.22:1));let dd=distance(e,player)||1;e.x+=(e.x-player.x)/dd*8;e.y+=(e.y-player.y)/dd*8});}if(evolution){enemies.filter(e=>e.hp>0&&distance(e,player)<155).forEach(e=>damageEnemy(e,13+attackLv*3));}shake=Math.min(3,shake+1.8)}}if(bowLv>0&&bowTimer<=0){bowTimer=Math.max(.34,1.35-bowLv*.13);let candidates=enemies.filter(e=>e.hp>0&&distance(e,player)<520).sort((a,b)=>distance(a,player)-distance(b,player));let count=bowLv>=4?3:bowLv>=2?2:1;for(let j=0;j<Math.min(count,candidates.length);j++){let e=candidates[j];fire(player.x,player.y,e.x,e.y,17+bowLv*9,'ally')}}for(let i=allies.length-1;i>=0;i--){let a=allies[i];a.life-=dt;a.cd-=dt;const tx=player.x+a.offX+Math.sin(time*2.2+i)*5,ty=player.y+a.offY+Math.cos(time*1.8+i)*4;const route=segmentBlocked(a.x,a.y,tx,ty)?navSeek(a,tx,ty):null;
+ if(route)companionStep(a,a.x+route.x*95,a.y+route.y*95,dt,Math.min(210,Math.hypot(tx-a.x,ty-a.y)*8.5),14);
+ else companionStep(a,tx,ty,dt,Math.min(210,Math.hypot(tx-a.x,ty-a.y)*8.5),14);let e=nearest(a.x,a.y,480);if(e){a.face=e.x>=a.x?1:-1;a.aim=Math.atan2(e.y-a.y,e.x-a.x)}if(a.cd<=0&&e){a.cd=Math.max(.48,.86-bowLv*.04);a.animStart=time;a.animUntil=time+.38;fire(a.x+(a.face>0?10:-10),a.y-4,e.x,e.y,Math.round((30+bowLv*5)*.90),'ally');effects.push({type:'spark',x:a.x+(a.face>0?10:-10),y:a.y-8,life:.18,rad:10})}if(a.life<=0)allies.splice(i,1)}for(let i=cavalryCharges.length-1;i>=0;i--){let c=cavalryCharges[i];c.delay-=dt;if(c.delay>0)continue;c.t+=dt;const p=clamp(c.t/c.duration,0,1);c.x=c.sx+(c.ex-c.sx)*p;c.y=c.sy+(c.ey-c.sy)*p;c.face=c.ex>=c.sx?1:-1;if(Math.random()<.6)effects.push({type:'dust',x:c.x-16*c.face,y:c.y+18,life:.2,rad:14});for(const foe of enemies){if(foe.hp>0&&!c.hitIds.includes(foe.id)&&distance(foe,c)<48){c.hitIds.push(foe.id);damageEnemy(foe,c.damage);let dd=distance(foe,c)||1;foe.x+=(foe.x-c.x)/dd*96;foe.y+=(foe.y-c.y)/dd*76;effects.push({type:'burst',x:foe.x,y:foe.y,life:.3,rad:28})}}if(c.t>=c.duration)cavalryCharges.splice(i,1)}for(const e of enemies){if(e.hp<=0)continue;e.cd-=dt;e.flash=Math.max(0,e.flash-dt);const target=escortTarget(e);let d=distance(e,target)||1,ux=(target.x-e.x)/d,uy=(target.y-e.y)/d;let startX=e.x;const speed=e.speed*(enemySurge?1.12:1)*moveFactorAt(e.x,e.y);
 if(e.type==='boss'){
  // 염장: 접근 → 0.8초 예고 → 회피 가능한 단검 공격 → 1.6초 재정비.
  if(e.windup>0){

@@ -552,7 +552,30 @@ function updateYoonNavigation(dt){
    for(let remain=step;remain>.001;){
      const len=Math.min(remain,4),nx=escortY.x+dx/mag*len,ny=escortY.y+dy/mag*len;
      if(!blocked(nx,ny)){escortY.x=nx;escortY.y=ny;}
-     else {if(!blocked(nx,escortY.y))escortY.x=nx;if(!blocked(escortY.x,ny))escortY.y=ny;}
+      else {
+       const beforeX=escortY.x,beforeY=escortY.y;
+       if(!blocked(nx,escortY.y))escortY.x=nx;
+       if(!blocked(escortY.x,ny))escortY.y=ny;
+       if(Math.hypot(escortY.x-beforeX,escortY.y-beforeY)<.1){
+        const flow=flowFor(player,'escortYoon');
+        const cx=Math.floor(escortY.x/grid),cy=Math.floor(escortY.y/grid),id=cy*cols+cx;
+        let waypoint=null,best=flow?.dist?.[id]??-1;
+        if(cx>=0&&cy>=0&&cx<cols&&cy<rows&&best>=0){
+         for(const [ox,oy] of flowDirs){const xx=cx+ox,yy=cy+oy;
+          if(xx<0||yy<0||xx>=cols||yy>=rows)continue;
+          const d=flow.dist[yy*cols+xx];if(d>=0&&d<best){best=d;waypoint={x:(xx+.5)*grid,y:(yy+.5)*grid}}}
+        }
+        const candidates=waypoint?[waypoint]:[];
+        for(const angle of [Math.PI/2,-Math.PI/2,Math.PI/4,-Math.PI/4]){
+         const co=Math.cos(angle),si=Math.sin(angle);
+         candidates.push({x:escortY.x+(dx/mag*co-dy/mag*si)*len,y:escortY.y+(dx/mag*si+dy/mag*co)*len});
+        }
+        for(const candidate of candidates){const dd=Math.hypot(candidate.x-escortY.x,candidate.y-escortY.y)||1;
+         const sx=escortY.x+(candidate.x-escortY.x)/dd*len,sy=escortY.y+(candidate.y-escortY.y)/dd*len;
+         if(!blocked(sx,sy)){escortY.x=sx;escortY.y=sy;break}
+        }
+       }
+      }
      remain-=len;
    }
  }
