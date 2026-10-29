@@ -559,8 +559,25 @@ let mult=kind==='boss'?1:1+time/800;enemies.push({id:serial++,type:kind,x,y,hp:a
  drops.push({x:dropPos.x,y:dropPos.y,val:e.type==='boss'?24:e.type==='elite'?5:1,age:0});if(drops.length>155){let old=drops.splice(0,Math.min(45,drops.length));let total=old.reduce((t,g)=>t+g.val,0);drops.push({x:player.x+38,y:player.y-34,val:total,age:12})}}}function damageEscort(d){if(!jangbogo||jangbogo.hp<=0||jangbogo.inv>0||state!=='play')return;const actual=Math.max(2,d*(shieldTime>0?.62:1)*(guardBuff>0?.80:1)*(time>=300?.84:.88));jangbogo.hp=Math.max(0,jangbogo.hp-actual);jangbogo.inv=.96;effects.push({type:'spark',x:jangbogo.x,y:jangbogo.y,life:.32,rad:18});if(jangbogo.hp<=0){escortFail=true;announce('장보고가 쓰러졌습니다. 호위 실패!',4);finish(false)}}
 function escortTarget(e){if(!jangbogo||jangbogo.hp<=0)return player;if(e.type==='boss'){const bd=distance(e,jangbogo),pd=distance(e,player);return pd<70&&pd<bd?player:jangbogo;}const pd=distance(e,player),bd=distance(e,jangbogo);return bd<pd*1.14?jangbogo:player}
 function damageEscortOrPlayer(target,dmg){if(target===jangbogo)damageEscort(dmg);else damagePlayer(dmg)}
-function damagePlayer(d){if(player.inv>0)return;runPhaseHits[Math.min(5,Math.floor(time/60))]++;const actual=Math.max(2,d*(guardBuff>0?.78:1)*(shieldTime>0?.55:1)*(time<60?.82:time>=120&&time<180?.90:1)-shieldLv*1.25);player.hp-=actual;hits++;player.inv=.66;if(shieldLv>=3&&shieldCounter<=0){shieldCounter=3.2;effects.push({type:'ring',x:player.x,y:player.y,rad:92,life:.30});for(const foe of enemies){if(foe.hp>0&&distance(foe,player)<92){let dd=distance(foe,player)||1;damageEnemy(foe,16+shieldLv*4);foe.x+=(foe.x-player.x)/dd*54;foe.y+=(foe.y-player.y)/dd*54}}}if(player.hp<=0){player.hp=0;finish(false)}}function fire(x,y,tx,ty,d,from){const angle=Math.atan2(ty-y,tx-x);missiles.push({x,y,vx:Math.cos(angle)*(from==='enemy'?220:440),vy:Math.sin(angle)*(from==='enemy'?220:440),life:from==='enemy'?2.3:1.35,d,from,pierce:from==='ally'&&bowLv>=5?2:0,hitIds:[]})}function command(i){if(state!=='play'||cooldowns[i]>0)return;cooldowns[i]=[24,28,30][i];if(i===0){const slots=[[-82,-46],[82,-46],[-94,28],[94,28]];for(let j=0;j<slots.length;j++){const [ox,oy]=slots[j];allies.push({x:player.x+ox,y:player.y+oy,life:12.8,cd:j*.22,offX:ox,offY:oy,face:ox<0?1:-1,aim:0})}announce('청해진 궁수 지원! 궁수대가 주변 적을 엄호합니다!',2.8)}else if(i===1){shieldTime=7;effects.push({type:'ring',x:player.x,y:player.y,rad:38,life:.38});announce('청해진 호위진! 7초간 피해를 크게 줄입니다.',2.8)}else{spawnCounterCharge();for(const e of enemies){if(distance(e,player)<165){damageEnemy(e,85+attackLv*10);let dd=distance(e,player)||1;e.x+=(e.x-player.x)/dd*48;e.y+=(e.y-player.y)/dd*48}}announce('청해진 수군 지원! 수군 돌격대가 주변 적을 휩쓸었습니다.',2.8)}updateHud()}/* v3.5: second-finger technique press independent of the movement pointer. */
+function damagePlayer(d){if(player.inv>0)return;runPhaseHits[Math.min(5,Math.floor(time/60))]++;const actual=Math.max(2,d*(guardBuff>0?.78:1)*(shieldTime>0?.55:1)*(time<60?.82:time>=120&&time<180?.90:1)-shieldLv*1.25);player.hp-=actual;hits++;player.inv=.66;if(shieldLv>=3&&shieldCounter<=0){shieldCounter=3.2;effects.push({type:'ring',x:player.x,y:player.y,rad:92,life:.30});for(const foe of enemies){if(foe.hp>0&&distance(foe,player)<92){let dd=distance(foe,player)||1;damageEnemy(foe,16+shieldLv*4);foe.x+=(foe.x-player.x)/dd*54;foe.y+=(foe.y-player.y)/dd*54}}}if(player.hp<=0){player.hp=0;finish(false)}}function fire(x,y,tx,ty,d,from){const angle=Math.atan2(ty-y,tx-x);missiles.push({x,y,vx:Math.cos(angle)*(from==='enemy'?220:440),vy:Math.sin(angle)*(from==='enemy'?220:440),life:from==='enemy'?2.3:1.35,d,from,pierce:from==='ally'&&bowLv>=5?2:0,hitIds:[]})}function command(i){if(state!=='play'||cooldowns[i]>0)return;cooldowns[i]=[24,28,30][i];if(i===0){const slots=[[-82,-46],[82,-46],[-94,28],[94,28]];for(let j=0;j<slots.length;j++){const [ox,oy]=slots[j];allies.push({x:player.x+ox,y:player.y+oy,life:12.8,cd:j*.22,offX:ox,offY:oy,face:ox<0?1:-1,aim:0})}announce('청해진 궁수 지원! 궁수대가 주변 적을 엄호합니다!',2.8)}else if(i===1){shieldTime=7;effects.push({type:'ring',x:player.x,y:player.y,rad:38,life:.38});announce('청해진 호위진! 7초간 피해를 크게 줄입니다.',2.8)}else{spawnCounterCharge();for(const e of enemies){if(distance(e,player)<165){damageEnemy(e,85+attackLv*10);let dd=distance(e,player)||1;e.x+=(e.x-player.x)/dd*48;e.y+=(e.y-player.y)/dd*48}}announce('청해진 수군 지원! 수군 돌격대가 주변 적을 휩쓸었습니다.',2.8)}updateHud()}/* v3.6: multi-touch command routing independent of click/pointer target. */
 const survivorCommandTapAt=[0,0,0];
+const survivorCommandTouches=new Set();
+function survivorCommandAt(x,y){
+ if(state!=='play')return -1;
+ for(let i=0;i<3;i++){
+  const b=$('command'+i);
+  if(!b||b.disabled||getComputedStyle(b).display==='none')continue;
+  const r=b.getBoundingClientRect();
+  if(r.width>0&&r.height>0&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return i;
+ }
+ return -1;
+}
+function survivorTriggerCommand(i){
+ if(i<0||state!=='play')return false;
+ survivorCommandTapAt[i]=performance.now();
+ command(i);
+ return true;
+}
 for(let i=0;i<3;i++){
  const b=$('command'+i);
  b.style.touchAction='none';
@@ -568,17 +585,33 @@ for(let i=0;i<3;i++){
  b.style.webkitUserSelect='none';
  b.style.webkitTouchCallout='none';
  b.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='touch')return; // Touch Events handle all touchscreen fingers.
   if(e.pointerType==='mouse'&&e.button!==0)return;
-  if(b.disabled)return;
-  survivorCommandTapAt[i]=performance.now();
-  command(i);
-  e.preventDefault();
+  if(survivorTriggerCommand(i))e.preventDefault();
  },{passive:false});
  b.addEventListener('click',e=>{
-  if(performance.now()-survivorCommandTapAt[i]<650){e.preventDefault();return;}
-  command(i);
+  if(performance.now()-survivorCommandTapAt[i]<750){e.preventDefault();return;}
+  survivorTriggerCommand(i);
  });
 }
+// Capture on document: some tablet browsers dispatch the second finger to the
+// gameplay canvas instead of producing a click/pointerdown on an ability button.
+document.addEventListener('touchstart',e=>{
+ if(state!=='play')return;
+ let fired=false;
+ for(const t of e.changedTouches){
+  const i=survivorCommandAt(t.clientX,t.clientY);
+  if(i<0)continue;
+  if(survivorCommandTouches.has(t.identifier))continue;
+  survivorCommandTouches.add(t.identifier);
+  survivorTriggerCommand(i);
+  fired=true;
+ }
+ if(fired&&e.cancelable)e.preventDefault();
+},{capture:true,passive:false});
+function survivorReleaseCommandTouches(e){for(const t of e.changedTouches)survivorCommandTouches.delete(t.identifier)}
+document.addEventListener('touchend',survivorReleaseCommandTouches,{capture:true,passive:true});
+document.addEventListener('touchcancel',survivorReleaseCommandTouches,{capture:true,passive:true});
 function pause(){if(state==='play'){state='pause';keys.clear();stick.x=stick.y=0;view('전투 일시정지','<p>전투를 멈추었습니다. 진행 상태는 유지됩니다.</p>',[['계속 플레이',()=>{keys.clear();stick.x=stick.y=0;state='play';overlay.style.display='none'},true],['전투 포기',()=>finish(false),false]])}else if(state==='pause'){state='play';overlay.style.display='none'}}$('pause').onclick=pause;let pending=0;const upgrades=[{id:'attack',name:'⚔️ 호위 검술',desc:'공격력과 사거리 강화. 5단계에서 넓은 검술 회전 공격.',ok:()=>attackLv<8,do:()=>{attackLv++;announce('호위 검술 '+attackLv+'단계 강화!',3);checkEvolution()}},{id:'bow',name:'🏹 청해진 궁수',desc:'지원 사격 수와 피해량 증가. 5단계에서 관통 사격 해금.',ok:()=>bowLv<6,do:()=>{bowLv++;if(bowLv===5)announce('관통 사격 해금!',3)}},{id:'shield',name:'🛡️ 호위 방어술',desc:'받는 피해 감소. 3단계에서 호위 반격 발동.',ok:()=>shieldLv<6,do:()=>{shieldLv++;checkEvolution()}},{id:'speed',name:'👟 기민한 발걸음',desc:'이동 속도가 증가합니다.',ok:()=>speedLv<6,do:()=>speedLv++},{id:'supply',name:'🧭 청해진 보급술',desc:'보급상자 유지 시간이 32초에서 45초로 증가합니다. 회복은 상자에서만 가능합니다.',ok:()=>!flags.has('supplyUpgrade'),do:()=>{flags.add('supplyUpgrade');announce('청해진 보급술 습득!',3)}}];function checkEvolution(){if(!evolution&&attackLv>=5&&shieldLv>=2){evolution=true;announce('최종 진화! 청해진 철벽 호위 발동!',5);effects.push({type:'ring',x:player.x,y:player.y,rad:220,life:.7})}}
 function upgradeVisual(id){return ({attack:'⚔️',bow:'🏹',shield:'🛡️',speed:'👟',supply:'🧭'})[id]||'⭐'}
 function upgradeTag(id){return ({attack:'공격 강화',bow:'원거리 지원',shield:'방어 강화',speed:'기동성',supply:'탐색 강화'})[id]||'특수'}
