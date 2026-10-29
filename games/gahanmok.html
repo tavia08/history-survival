@@ -348,8 +348,14 @@ function updateAllies(dt){
    }
   }
   const step=Math.min(dt*175,12);const nx=ally.x+vx*step,ny=ally.y+vy*step;
-  if(!blocked(nx,ny)){ally.x=nx;ally.y=ny;}
-  else {if(!blocked(nx,ally.y))ally.x=nx;if(!blocked(ally.x,ny))ally.y=ny;}
+  if(!blocked(nx,ny)){ally.x=nx;ally.y=ny;ally.stuckFor=0;}
+   else {const px=ally.x,py=ally.y;if(!blocked(nx,ally.y))ally.x=nx;if(!blocked(ally.x,ny))ally.y=ny;
+   if(Math.hypot(ally.x-px,ally.y-py)<.5){ally.stuckFor=(ally.stuckFor||0)+dt;
+    if(ally.stuckFor>.30){const options=[[1,0],[-1,0],[0,1],[0,-1],[.7,.7],[-.7,.7],[.7,-.7],[-.7,-.7]];
+     let pick=null,bd=1e20;for(const [ax,ay] of options){const tx=ally.x+ax*step*1.5,ty=ally.y+ay*step*1.5;
+      if(blocked(tx,ty))continue;const score=Math.hypot(dest.x-tx,dest.y-ty);if(score<bd){bd=score;pick=[tx,ty]}}
+     if(pick){ally.x=pick[0];ally.y=pick[1];}ally.stuckFor=0;}}
+   else ally.stuckFor=0;}
  }
 }
 function enemySpawnPosition(){
@@ -593,7 +599,6 @@ function saveGahanmokResultOnce(){
      lastResult:phase,lastSeconds:duration,lastScore:points,lastKills:defeated
    };
    localStorage.setItem(GH_RECORD_KEY,JSON.stringify(result));
-   try{window.HSSyncV13?.save('gahanmok',{score:points,win:phase==='victory',seconds:duration,kills:defeated});}catch(e){console.warn('[HS] 개인 기록',e)}
    ghRecorded=true;
  } catch(err) { console.warn('가한목 기록 저장이 제한되었습니다.',err); }
 }
@@ -867,6 +872,24 @@ window.__qa.runFullScenario=(seed=1, targetIndex=3, searchBefore=0, patrolMode='
 </script><script>
 (()=>{'use strict';
 const guide=document.getElementById('guide'),teacher=document.getElementById('teacherTools');window.__studentGuideOpen=true;
+
+/* v3.4: 왼손 자유 이동 + 독립된 오른손 기술 입력. */
+const freeStyle=document.createElement('style');
+freeStyle.textContent=`#survivorMoveZone{position:fixed;left:max(0px,env(safe-area-inset-left));bottom:0;width:min(44vw,420px);height:min(53dvh,390px);z-index:19;touch-action:none;background:transparent;user-select:none}#survivorFloating{position:fixed;z-index:20;width:152px;height:152px;border:2px solid rgba(255,234,188,.64);border-radius:50%;background:rgba(35,43,47,.18);box-shadow:inset 0 0 20px #0004;pointer-events:none;transform:translate(-50%,-50%);display:none}#survivorFloatingDot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin-left:-31px;margin-top:-31px;border-radius:50%;border:2px solid #ffe7b8;background:#e4bf8066;box-shadow:0 2px 12px #0008}#survivorMoveHint{position:absolute;bottom:25%;left:16%;pointer-events:none;opacity:.65;font:700 12px system-ui,sans-serif;color:#ffe6b8;text-shadow:0 2px 6px #000}#joystick,#stick{display:none!important}@media(pointer:fine){#survivorMoveZone,#survivorFloating{display:none!important}}`;
+document.head.appendChild(freeStyle);
+const freeZone=document.createElement('div');freeZone.id='survivorMoveZone';freeZone.setAttribute('aria-label','왼손 자유 이동 조작 영역');
+freeZone.innerHTML='<span id="survivorMoveHint">이곳을 터치해 이동</span>';
+const freeRing=document.createElement('div');freeRing.id='survivorFloating';freeRing.innerHTML='<div id="survivorFloatingDot"></div>';
+document.body.appendChild(freeZone);document.body.appendChild(freeRing);
+let freePointer=null,freeX=0,freeY=0;
+const freeDot=freeRing.firstElementChild;
+function freeMove(e){const dx=e.clientX-freeX,dy=e.clientY-freeY,len=Math.hypot(dx,dy),r=58;const scale=Math.min(1,len/r);stick.x=len?dx/len*scale:0;stick.y=len?dy/len*scale:0;freeDot.style.transform=`translate(${stick.x*58}px,${stick.y*58}px)`;}
+function freeEnd(e){if(e&&e.pointerId!==freePointer)return;const old=freePointer;freePointer=null;stick.x=0;stick.y=0;freeRing.style.display='none';freeDot.style.transform='';if(old!==null&&freeZone.hasPointerCapture(old))try{freeZone.releasePointerCapture(old)}catch(_){}}
+freeZone.addEventListener('pointerdown',e=>{if(freePointer!==null||e.pointerType==='mouse'&&e.button!==0)return;freePointer=e.pointerId;freeX=e.clientX;freeY=e.clientY;freeRing.style.left=freeX+'px';freeRing.style.top=freeY+'px';freeRing.style.display='block';try{freeZone.setPointerCapture(e.pointerId)}catch(_){}freeMove(e);e.preventDefault();});
+freeZone.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}});
+freeZone.addEventListener('pointerup',freeEnd);freeZone.addEventListener('pointercancel',freeEnd);freeZone.addEventListener('lostpointercapture',freeEnd);
+window.addEventListener('blur',()=>freeEnd());document.addEventListener('visibilitychange',()=>{if(document.hidden)freeEnd()});
+
 if(new URLSearchParams(location.search).get('survivorStart')==='1'){guide.hidden=true;window.__studentGuideOpen=false;}
 const openGuide=()=>{guide.hidden=false;window.__studentGuideOpen=true;document.getElementById('guideClose').focus();};
 document.getElementById('guideClose').addEventListener('click',()=>{guide.hidden=true;window.__studentGuideOpen=false;});
@@ -892,4 +915,4 @@ document.getElementById('fullBtn').addEventListener('click',()=>{if(document.ful
 <script>/* Student build: restrict internal QA entry points. */
 for(const n of ['__qa','__v044QA','__v054QA','__yoonNavTest','__inputQA']){try{delete window[n]}catch(_){window[n]=undefined}}
 </script>
-<a id="survivorHubReturn" href="../index.html" aria-label="생존자의 베이스캠프로 돌아가기" style="position:fixed;left:10px;top:10px;z-index:999999;background:rgba(16,24,25,.90);border:1px solid #bda06c;color:#fff3db;text-decoration:none;border-radius:10px;padding:7px 11px;font:700 12px system-ui,'Malgun Gothic',sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);">← 베이스캠프</a><script src="../assets/hs-sync-v13.js"></script></body></html>
+<a id="survivorHubReturn" href="../index.html" aria-label="생존자의 베이스캠프로 돌아가기" style="position:fixed;left:10px;top:10px;z-index:999999;background:rgba(16,24,25,.90);border:1px solid #bda06c;color:#fff3db;text-decoration:none;border-radius:10px;padding:7px 11px;font:700 12px system-ui,'Malgun Gothic',sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);">← 베이스캠프</a></body></html>
