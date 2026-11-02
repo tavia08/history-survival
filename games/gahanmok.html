@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no"><title>가한목 전투 · 학생용 v1.0 최종 배포판</title><style>
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1,user-scalable=no"><title>가한목 전투 · 학생용 v1.0 TouchFix v2</title><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b161e;color:#f4eacb;font-family:system-ui,'Malgun Gothic',sans-serif;touch-action:none}canvas{width:100vw;height:100dvh;display:block}#hud{position:fixed;left:10px;top:10px;right:10px;background:#132634e8;border:1px solid #d3ad69;border-radius:11px;padding:9px 12px;pointer-events:none;max-width:690px;font-size:12px}#hud strong{color:#ffe3a1;font-size:17px}.toolbar{position:fixed;right:10px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 155px)}button{background:#254859;color:#fff0d0;border:1px solid #bfaa77;border-radius:9px;padding:11px 12px;font-weight:bold;touch-action:manipulation;cursor:pointer}button:active{background:#467183}#mini{position:fixed;right:12px;top:12px;width:194px;padding:8px;background:#0c1c29e8;border:1px solid #c2a16a;border-radius:10px;pointer-events:none}#miniTitle{font-weight:900;font-size:12px;color:#ffe2a7;margin-bottom:4px}#miniCanvas{display:block;width:176px;height:117px;border:1px solid #506b79;border-radius:4px}#mission{font-size:12px;margin-top:5px;color:#e5ebda}#toast{position:fixed;left:50%;top:24%;transform:translateX(-50%);min-width:260px;max-width:min(80vw,580px);background:#172d3cec;border:2px solid #e4ba73;border-radius:12px;padding:15px 17px;text-align:center;font-size:17px;font-weight:900;display:none;pointer-events:none;box-shadow:0 8px 30px #000a}@media(max-width:750px){#hud{right:158px;padding:6px 8px}#hud strong{font-size:13px}#mini{width:148px;right:5px;top:5px;padding:5px}#miniCanvas{width:136px;height:91px}#note{font-size:10px}#miniTitle{font-size:10px}}#stick{position:fixed;left:18px;bottom:18px;width:112px;height:112px;border:2px solid #f6e6bf8c;border-radius:100%;background:#f6e6bf22;touch-action:none}#knob{position:absolute;left:38px;top:38px;width:34px;height:34px;background:#f4d084;border-radius:50%;border:2px solid #fff3c9}#note{font-size:11px;color:#bbd4d7;margin-top:4px}#status{color:#d7f7e0;margin-top:5px;font-weight:bold}.muted{color:#c1d6da}
 
 /* v0.31 태블릿 화면과 터치 조작 보정 */
@@ -679,6 +679,11 @@ stickEl.addEventListener('pointerup',releaseStick);stickEl.addEventListener('poi
 // v0.46: cancel all controls when switching tabs or hiding the browser.
 document.addEventListener('visibilitychange',()=>{if(document.hidden){stopStick();keys.clear();}});
 window.addEventListener('pagehide',()=>{stopStick();keys.clear();});
+// TouchFix v2: bridge external floating touch pad to the REAL movement vector in this IIFE.
+window.__gahanmokMoveInputV2={
+ set(x,y){stick.x=Number.isFinite(x)?Math.max(-1,Math.min(1,x)):0;stick.y=Number.isFinite(y)?Math.max(-1,Math.min(1,y)):0;},
+ reset(){stick.x=0;stick.y=0;}
+};
 document.querySelector('#search').onclick=()=>beginSearch();document.querySelector('#next').onclick=()=>{auto=false;candidate=(candidate+1)%candidates.length;findRoute()};document.querySelector('#route').onclick=()=>{auto=false;findRoute();alert('출발점 기준 전체 후보 자동검사:\n'+testAll().map(r=>`${r.name}: ${r.reachable?'도달 가능 ('+r.cells+'칸)':'경로 없음'} / 목적지 ${r.goalWalkable?'이동 가능':'장애물'}`).join('\n'))};document.querySelector('#auto').onclick=()=>{auto=!auto;findRoute();refresh()};document.querySelector('#overlay').onclick=()=>{debug=!debug};document.querySelector('#reset').onclick=()=>{auto=false;player=adjust(780,535);findRoute()};
 player=adjust(780,535);candidates.forEach((c)=>Object.assign(c,adjust(c.x,c.y)));findRoute();drawMini();
 let perfHistory=[],perfPrev=0;function frame(t){if(perfPrev){const gap=t-perfPrev;if(gap>0&&gap<500){perfHistory.push(gap);if(perfHistory.length>180)perfHistory.shift();}}perfPrev=t;let dt=Math.min((t-last)/1000||.016,.05);last=t;if(!document.hidden&&!window.__studentGuideOpen&&!window.__gahanmokQARunning&&phase!=='failed'&&phase!=='victory'){frameSeconds+=dt;update(dt);}draw();requestAnimationFrame(frame)}requestAnimationFrame(frame);
@@ -896,27 +901,24 @@ window.__qa.runFullScenario=(seed=1, targetIndex=3, searchBefore=0, patrolMode='
 (()=>{'use strict';
 const guide=document.getElementById('guide'),teacher=document.getElementById('teacherTools');window.__studentGuideOpen=true;
 
-/* v3.4 + TouchFix v1: 왼손 자유 이동 + 독립된 오른손 기술 입력. */
+/* v3.4: 왼손 자유 이동 + 독립된 오른손 기술 입력. */
 const freeStyle=document.createElement('style');
-freeStyle.textContent=`#survivorMoveZone{position:fixed;left:max(0px,env(safe-area-inset-left));bottom:0;width:min(44vw,420px);height:min(53dvh,390px);z-index:19;touch-action:none;background:transparent;user-select:none;-webkit-user-select:none;overscroll-behavior:none}#survivorFloating{position:fixed;z-index:20;width:152px;height:152px;border:2px solid rgba(255,234,188,.64);border-radius:50%;background:rgba(35,43,47,.18);box-shadow:inset 0 0 20px #0004;pointer-events:none;transform:translate(-50%,-50%);display:none}#survivorFloatingDot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin-left:-31px;margin-top:-31px;border-radius:50%;border:2px solid #ffe7b8;background:#e4bf8066;box-shadow:0 2px 12px #0008}#survivorMoveHint{position:absolute;bottom:25%;left:16%;pointer-events:none;opacity:.65;font:700 12px system-ui,sans-serif;color:#ffe6b8;text-shadow:0 2px 6px #000}#joystick,#stick{display:none!important}`;
+freeStyle.textContent=`#survivorMoveZone{position:fixed;left:max(0px,env(safe-area-inset-left));bottom:0;width:min(44vw,420px);height:min(53dvh,390px);z-index:99990;touch-action:none;background:transparent;user-select:none;-webkit-user-select:none}#survivorFloating{position:fixed;z-index:99991;width:152px;height:152px;border:2px solid rgba(255,234,188,.64);border-radius:50%;background:rgba(35,43,47,.18);box-shadow:inset 0 0 20px #0004;pointer-events:none;transform:translate(-50%,-50%);display:none}#survivorFloatingDot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin-left:-31px;margin-top:-31px;border-radius:50%;border:2px solid #ffe7b8;background:#e4bf8066;box-shadow:0 2px 12px #0008}#survivorMoveHint{position:absolute;bottom:25%;left:16%;pointer-events:none;opacity:.65;font:700 12px system-ui,sans-serif;color:#ffe6b8;text-shadow:0 2px 6px #000}#joystick,#stick{display:none!important}`;
 document.head.appendChild(freeStyle);
 const freeZone=document.createElement('div');freeZone.id='survivorMoveZone';freeZone.setAttribute('aria-label','왼손 자유 이동 조작 영역');
 freeZone.innerHTML='<span id="survivorMoveHint">이곳을 터치해 이동</span>';
 const freeRing=document.createElement('div');freeRing.id='survivorFloating';freeRing.innerHTML='<div id="survivorFloatingDot"></div>';
 document.body.appendChild(freeZone);document.body.appendChild(freeRing);
-const touchCapable=(navigator.maxTouchPoints||0)>0||matchMedia('(any-pointer:coarse)').matches;
-if(!touchCapable)freeZone.style.display='none';
 let freePointer=null,freeX=0,freeY=0;
 const freeDot=freeRing.firstElementChild;
-function freeMove(e){const dx=e.clientX-freeX,dy=e.clientY-freeY,len=Math.hypot(dx,dy),r=58;const scale=Math.min(1,len/r);stick.x=len?dx/len*scale:0;stick.y=len?dy/len*scale:0;freeDot.style.transform=`translate(${stick.x*58}px,${stick.y*58}px)`;}
-function freeEnd(e){if(e&&freePointer!==null&&e.pointerId!==undefined&&e.pointerId!==freePointer)return;const old=freePointer;freePointer=null;stick.x=0;stick.y=0;freeRing.style.display='none';freeDot.style.transform='';if(old!==null&&freeZone.hasPointerCapture?.(old))try{freeZone.releasePointerCapture(old)}catch(_){}}
-function freeStart(e){if(!touchCapable||freePointer!==null||(e.pointerType==='mouse'&&e.button!==0))return;freePointer=e.pointerId;freeX=e.clientX;freeY=e.clientY;freeRing.style.left=freeX+'px';freeRing.style.top=freeY+'px';freeRing.style.display='block';try{freeZone.setPointerCapture(e.pointerId)}catch(_){}freeMove(e);e.preventDefault();}
-freeZone.addEventListener('pointerdown',freeStart,{passive:false});
-freeZone.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}},{passive:false});
-freeZone.addEventListener('pointerup',freeEnd,{passive:false});freeZone.addEventListener('pointercancel',freeEnd,{passive:false});freeZone.addEventListener('lostpointercapture',freeEnd);
-document.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}},{passive:false,capture:true});
-document.addEventListener('pointerup',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false,capture:true});
-document.addEventListener('pointercancel',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false,capture:true});
+function freeMove(e){const dx=e.clientX-freeX,dy=e.clientY-freeY,len=Math.hypot(dx,dy),r=58,scale=Math.min(1,len/r);const vx=len?dx/len*scale:0,vy=len?dy/len*scale:0;window.__gahanmokMoveInputV2?.set(vx,vy);freeDot.style.transform=`translate(${vx*58}px,${vy*58}px)`;}
+function freeEnd(e){if(e&&e.pointerId!==freePointer)return;const old=freePointer;freePointer=null;window.__gahanmokMoveInputV2?.reset();freeRing.style.display='none';freeDot.style.transform='';if(old!==null&&freeZone.hasPointerCapture(old))try{freeZone.releasePointerCapture(old)}catch(_){}}
+freeZone.addEventListener('pointerdown',e=>{if(freePointer!==null||e.pointerType==='mouse'&&e.button!==0)return;freePointer=e.pointerId;freeX=e.clientX;freeY=e.clientY;freeRing.style.left=freeX+'px';freeRing.style.top=freeY+'px';freeRing.style.display='block';try{freeZone.setPointerCapture(e.pointerId)}catch(_){}freeMove(e);e.preventDefault();});
+freeZone.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}});
+freeZone.addEventListener('pointerup',freeEnd);freeZone.addEventListener('pointercancel',freeEnd);freeZone.addEventListener('lostpointercapture',freeEnd);
+document.addEventListener('pointermove',e=>{if(e.pointerId===freePointer)freeMove(e)},{passive:false});
+document.addEventListener('pointerup',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false});
+document.addEventListener('pointercancel',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false});
 window.addEventListener('blur',()=>freeEnd());document.addEventListener('visibilitychange',()=>{if(document.hidden)freeEnd()});
 
 if(new URLSearchParams(location.search).get('survivorStart')==='1'){guide.hidden=true;window.__studentGuideOpen=false;}
