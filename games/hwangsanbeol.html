@@ -1130,8 +1130,8 @@ if(new URLSearchParams(location.search).get('survivorStart')==='1'){start();}els
  }
  menuBtn.addEventListener('click',()=>{if(oldPause){oldPause.click();setTimeout(addPauseActions,0)}});
  guide.addEventListener('click',e=>{if(e.target===guide||e.target.classList.contains('close'))guide.classList.remove('open')});
- new MutationObserver(()=>{sync();addPauseActions()}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['style','class'],childList:true});
- setInterval(sync,180);sync();
+ // v2.1 stability: MutationObserver removed to prevent recursive style/class observation loop.
+ setInterval(()=>{sync();addPauseActions()},180);sync();addPauseActions();
 })();
 </script>
 </body></html>
