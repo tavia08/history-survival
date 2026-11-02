@@ -896,21 +896,27 @@ window.__qa.runFullScenario=(seed=1, targetIndex=3, searchBefore=0, patrolMode='
 (()=>{'use strict';
 const guide=document.getElementById('guide'),teacher=document.getElementById('teacherTools');window.__studentGuideOpen=true;
 
-/* v3.4: 왼손 자유 이동 + 독립된 오른손 기술 입력. */
+/* v3.4 + TouchFix v1: 왼손 자유 이동 + 독립된 오른손 기술 입력. */
 const freeStyle=document.createElement('style');
-freeStyle.textContent=`#survivorMoveZone{position:fixed;left:max(0px,env(safe-area-inset-left));bottom:0;width:min(44vw,420px);height:min(53dvh,390px);z-index:19;touch-action:none;background:transparent;user-select:none}#survivorFloating{position:fixed;z-index:20;width:152px;height:152px;border:2px solid rgba(255,234,188,.64);border-radius:50%;background:rgba(35,43,47,.18);box-shadow:inset 0 0 20px #0004;pointer-events:none;transform:translate(-50%,-50%);display:none}#survivorFloatingDot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin-left:-31px;margin-top:-31px;border-radius:50%;border:2px solid #ffe7b8;background:#e4bf8066;box-shadow:0 2px 12px #0008}#survivorMoveHint{position:absolute;bottom:25%;left:16%;pointer-events:none;opacity:.65;font:700 12px system-ui,sans-serif;color:#ffe6b8;text-shadow:0 2px 6px #000}#joystick,#stick{display:none!important}@media(pointer:fine){#survivorMoveZone,#survivorFloating{display:none!important}}`;
+freeStyle.textContent=`#survivorMoveZone{position:fixed;left:max(0px,env(safe-area-inset-left));bottom:0;width:min(44vw,420px);height:min(53dvh,390px);z-index:19;touch-action:none;background:transparent;user-select:none;-webkit-user-select:none;overscroll-behavior:none}#survivorFloating{position:fixed;z-index:20;width:152px;height:152px;border:2px solid rgba(255,234,188,.64);border-radius:50%;background:rgba(35,43,47,.18);box-shadow:inset 0 0 20px #0004;pointer-events:none;transform:translate(-50%,-50%);display:none}#survivorFloatingDot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin-left:-31px;margin-top:-31px;border-radius:50%;border:2px solid #ffe7b8;background:#e4bf8066;box-shadow:0 2px 12px #0008}#survivorMoveHint{position:absolute;bottom:25%;left:16%;pointer-events:none;opacity:.65;font:700 12px system-ui,sans-serif;color:#ffe6b8;text-shadow:0 2px 6px #000}#joystick,#stick{display:none!important}`;
 document.head.appendChild(freeStyle);
 const freeZone=document.createElement('div');freeZone.id='survivorMoveZone';freeZone.setAttribute('aria-label','왼손 자유 이동 조작 영역');
 freeZone.innerHTML='<span id="survivorMoveHint">이곳을 터치해 이동</span>';
 const freeRing=document.createElement('div');freeRing.id='survivorFloating';freeRing.innerHTML='<div id="survivorFloatingDot"></div>';
 document.body.appendChild(freeZone);document.body.appendChild(freeRing);
+const touchCapable=(navigator.maxTouchPoints||0)>0||matchMedia('(any-pointer:coarse)').matches;
+if(!touchCapable)freeZone.style.display='none';
 let freePointer=null,freeX=0,freeY=0;
 const freeDot=freeRing.firstElementChild;
 function freeMove(e){const dx=e.clientX-freeX,dy=e.clientY-freeY,len=Math.hypot(dx,dy),r=58;const scale=Math.min(1,len/r);stick.x=len?dx/len*scale:0;stick.y=len?dy/len*scale:0;freeDot.style.transform=`translate(${stick.x*58}px,${stick.y*58}px)`;}
-function freeEnd(e){if(e&&e.pointerId!==freePointer)return;const old=freePointer;freePointer=null;stick.x=0;stick.y=0;freeRing.style.display='none';freeDot.style.transform='';if(old!==null&&freeZone.hasPointerCapture(old))try{freeZone.releasePointerCapture(old)}catch(_){}}
-freeZone.addEventListener('pointerdown',e=>{if(freePointer!==null||e.pointerType==='mouse'&&e.button!==0)return;freePointer=e.pointerId;freeX=e.clientX;freeY=e.clientY;freeRing.style.left=freeX+'px';freeRing.style.top=freeY+'px';freeRing.style.display='block';try{freeZone.setPointerCapture(e.pointerId)}catch(_){}freeMove(e);e.preventDefault();});
-freeZone.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}});
-freeZone.addEventListener('pointerup',freeEnd);freeZone.addEventListener('pointercancel',freeEnd);freeZone.addEventListener('lostpointercapture',freeEnd);
+function freeEnd(e){if(e&&freePointer!==null&&e.pointerId!==undefined&&e.pointerId!==freePointer)return;const old=freePointer;freePointer=null;stick.x=0;stick.y=0;freeRing.style.display='none';freeDot.style.transform='';if(old!==null&&freeZone.hasPointerCapture?.(old))try{freeZone.releasePointerCapture(old)}catch(_){}}
+function freeStart(e){if(!touchCapable||freePointer!==null||(e.pointerType==='mouse'&&e.button!==0))return;freePointer=e.pointerId;freeX=e.clientX;freeY=e.clientY;freeRing.style.left=freeX+'px';freeRing.style.top=freeY+'px';freeRing.style.display='block';try{freeZone.setPointerCapture(e.pointerId)}catch(_){}freeMove(e);e.preventDefault();}
+freeZone.addEventListener('pointerdown',freeStart,{passive:false});
+freeZone.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}},{passive:false});
+freeZone.addEventListener('pointerup',freeEnd,{passive:false});freeZone.addEventListener('pointercancel',freeEnd,{passive:false});freeZone.addEventListener('lostpointercapture',freeEnd);
+document.addEventListener('pointermove',e=>{if(e.pointerId===freePointer){freeMove(e);e.preventDefault()}},{passive:false,capture:true});
+document.addEventListener('pointerup',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false,capture:true});
+document.addEventListener('pointercancel',e=>{if(e.pointerId===freePointer)freeEnd(e)},{passive:false,capture:true});
 window.addEventListener('blur',()=>freeEnd());document.addEventListener('visibilitychange',()=>{if(document.hidden)freeEnd()});
 
 if(new URLSearchParams(location.search).get('survivorStart')==='1'){guide.hidden=true;window.__studentGuideOpen=false;}
